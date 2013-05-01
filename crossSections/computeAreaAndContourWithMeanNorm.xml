@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+
+    <category>AreaAndContourOfAirway</category>
+    <title>Cross-sectional area and contour of airway</title>
+    <description>Compute the cross-sectional area andcontour of airway.</description>
+    <version>1.0</version>
+    <documentation-url></documentation-url>
+    <license></license>
+    <contributor>Yi Hong</contributor>
+    <acknowledgements></acknowledgements>
+
+    <parameters>
+        <label>Input/Output</label>
+        <description>Input/Output Parameters</description>
+
+        <image>
+            <name>inputModelVTK</name>
+            <label>Input VTK Model</label>
+	    <channel>input</channel>
+	    <index>0</index>
+            <default>None</default>
+            <description>The model of airway.</description>
+        </image>
+        
+       <image>
+            <name>inputMeanNorm</name>
+            <label>Input Mean And Norm</label>
+	    <channel>input</channel>
+	    <index>1</index>
+            <default>None</default>
+            <description>The mean and norm of airway cross-sectional surface.</description>
+        </image>
+
+        <image>
+            <name>inputMouthPosition</name>
+            <label>Input Mouth's Position</label>
+            <channel>input</channel>
+            <index>2</index>
+            <default>None</default>
+            <description>The file with the mouth's position.</description>
+        </image>
+
+ 	<image>
+            <name>outputArea</name>
+            <label>Output area file</label>
+            <channel>output</channel>
+            <index>3</index>
+            <default>None</default>
+            <description>Output cross-sectional area.</description>
+        </image>
+        
+        <image>
+            <name>outputContourPrefix</name>
+            <label>Output Contour Prefix</label>
+            <channel>output</channel>
+            <index>4</index>
+            <default>None</default>
+            <description>Output cross-sectional contour, create a series of .txt file.</description>
+        </image>
+
+     </parameters>
+
+</executable>
+
