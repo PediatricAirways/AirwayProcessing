@@ -1,12 +1,31 @@
 function generateCenterlineOfAirway( subjectName, inputAirwaySegmentation, outputIsosurfacePrefix, nSurface, landmarksFile, clipFile )
 
-% given the airway segmentation, automatically generate the centerline
-% subjectName: the name of the subject
-% inputAirwaySegmentation: the segmentation volume of airway
-% outputIsosurfacePrefix: the output directory
-% nSurface: the number of points on the centerline
-% landmarksFile: the input file with landmarks
-% clipFile: the file with sphere to remove the mouth and other unwanted parts
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --- Pediatric Airway Atlas Processing Code  ---
+%
+%   Licensed under the Apache License, Version 2.0 (the "License");
+%   you may not use this file except in compliance with the License.
+%   You may obtain a copy of the License at
+%
+%      http://www.apache.org/licenses/LICENSE-2.0 
+%
+%   Unless required by applicable law or agreed to in writing, software
+%   distributed under the License is distributed on an "AS IS" BASIS,
+%   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%   See the License for the specific language governing permissions and
+%   limitations under the License.
+%
+%   given the airway segmentation, automatically generate the centerline
+%   
+%   subjectName: the name of the subject
+%   inputAirwaySegmentation: the segmentation volume of airway
+%   outputIsosurfacePrefix: the output directory
+%   nSurface: the number of points on the centerline
+%   landmarksFile: the input file with landmarks
+%   clipFile: the file with sphere to remove the mouth and other unwanted parts
+%
+%   Author: Yi Hong
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % read the airway segmentation results
 [im_data, im_info] = nrrdRead(inputAirwaySegmentation);
@@ -740,7 +759,7 @@ saveas(handle_contour, figName);
 
 %figName = sprintf( '%s/plane.png', outputIsosurfacePrefix );
 %saveas(handle_plane, figName);
-%figName = sprintf( '%s/plane.fig', outputIsosurfacePrefix );
+%figName = sprintf( '%s/plane.png', outputIsosurfacePrefix );
 %saveas(handle_plane, figName);
 
 % using smoothed centerline to check the normal's reliability 

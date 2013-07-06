@@ -1,18 +1,33 @@
 function generateScriptsForAirwayAtlas( scriptsFile, dataFoldName, resultsDirName, sampleNum )
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --- Pediatric Airway Atlas Processing Code  ---
 %
-% scriptsFile: the name of the file, with chmod +x , you can run it at command line
-% dataFoldName: the folder name of the prepared data, like ./data
-% resultsDirName: the folder name of the generated results, like ./results
-% sampleNum: the number of the points on the centerline, usually 100
+%   Licensed under the Apache License, Version 2.0 (the "License");
+%   you may not use this file except in compliance with the License.
+%   You may obtain a copy of the License at
+%
+%      http://www.apache.org/licenses/LICENSE-2.0 
+%
+%   Unless required by applicable law or agreed to in writing, software
+%   distributed under the License is distributed on an "AS IS" BASIS,
+%   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%   See the License for the specific language governing permissions and
+%   limitations under the License.
+%
+%   scriptsFile: the name of the file, with chmod +x , you can run it at command line
+%   dataFoldName: the folder name of the prepared data, like ./data
+%   resultsDirName: the folder name of the generated results, like ./results
+%   sampleNum: the number of the points on the centerline, usually 100
 % 
-% the name of the following prepared data can be changed:
-% binary segmentation: *_Segmented_NoSinuses.nrrd
-% Landmarks: *_Points.txt
-% The sphere used to remove the mouth: *_CuttingPlanes.txt
-% airway geometry: *_Airway_NoSinuses_NoMouth_Smooth.vtk
+%   the name of the following prepared data can be changed:
+%   binary segmentation: *_Segmented_NoSinuses.nrrd
+%   Landmarks: *_Points.txt
+%   The sphere used to remove the mouth: *_CuttingPlanes.txt
+%   airway geometry: *_Airway_NoSinuses_NoMouth_Smooth.vtk
 % 
- 
+%   Author: Yi Hong
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 cases = {'CRL02', 'CRL16'};
 fid = fopen( scriptsFile, 'wt' );
