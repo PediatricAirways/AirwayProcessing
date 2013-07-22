@@ -28,8 +28,15 @@ function generateScriptsForAirwayAtlas( scriptsFile, dataFoldName, resultsDirNam
 % 
 %   Author: Yi Hong
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%{
+cases = {'CRL02', 'CRL04', 'CRL06', 'CRL16', 'CRL21', 'CRL23', 'CRL27', 'CRL31', 'CRL32', 'CRL34', 'CRL36', 'CRL39', 'CRL40', 'CRL42', 'CRL44', 'CRL46', 'CRL48', 'CRL49', 'CRL50', 'CRL51', ...
+		 'CRL53', 'CRL54', 'CRL59', 'CRL60', 'CRL61', 'CRL62', 'CRL63', 'CRL64', 'CRL65', 'CRL66', 'CRL67', 'CRL68', 'CRL71', 'CRL72', 'CRL73', 'CRL74', 'CRL76', 'CRL77', 'CRL78', 'CRL80', ...
+		 'CRL81', 'CRL82', 'CRL83', 'CRL84', 'CRL85', 'CRL86', 'CRL88', 'CRL89', 'CRL90', 'CRL91', 'CRL92', 'CRL93', 'CRL94', 'CRL95', 'CRL96', 'CRL97', 'CRL98', 'CRL99', 'CRL102', 'CRL104', ...
+		 'CRL105', 'CRL107', 'CRL108', 'CRL109', 'CRL111', 'CRL113', 'CRL114', 'CRL115', 'CRL116', 'CRL117', 'CRL118', 'CRL119', 'CRL120', 'CRL121', 'CRL122', 'CRL123', 'CRL124', 'CRL127', ...
+		 'SGS03ManPre', 'SGS07', 'SGS11', 'SGS12', 'SGS13', 'SGS18', 'SGS03ManPost', 'SGS05', 'SGS06', 'SGS08', 'SGS09', 'SGS10', 'SGS14', 'SGS17', 'SGS07_V3', 'SGS04_V3', 'SGS01_V3'};
+%}
+cases = {'CRL32'};
 
-cases = {'CRL02', 'CRL16'};
 fid = fopen( scriptsFile, 'wt' );
 for iI = 1:max(size( cases))
     fprintf( fid, '######  %s  ######\n', cases{iI} );
@@ -47,7 +54,7 @@ for iI = 1:max(size( cases))
     fprintf( fid, 'mkdir ./%s/Contour%s\n', resultsDirName, cases{iI} );
     fprintf( fid, './code/crossSections/bin/computeAreaAndContourWithMeanNorm ./%s/%s_Airway_NoSinuses_NoMouth_Smooth.vtk ./%s/IsoSurface%s/%s_MeanAndNormal.txt ./%s/%s_CuttingPlanes.txt ', ...
                    dataFoldName, cases{iI}, resultsDirName, cases{iI}, cases{iI}, dataFoldName, cases{iI} );
-    fprintf( fid, './%s/Contour%s/%s_Area.txt ./%s/Contour%s/contour\n\n', resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI} );
+    fprintf( fid, './%s/Contour%s/%s_Area.txt ./%s/Contour%s/%s_Perimeter.txt ./%s/Contour%s/contour\n\n', resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI} );
   
     % scripts for displaying the cross-sections and the cross-sectional curve
     fprintf( fid, 'rm -r ./%s/Curves%s\n', resultsDirName, cases{iI} );
@@ -63,8 +70,8 @@ for iI = 1:max(size( cases))
     fprintf( fid, 'cd ../..; quit;"\n\n' );
     
     fprintf( fid, 'matlab -nodesktop -nosplash -nodisplay -r "cd ./code/display; drawLandmarksOnOneCurve(' );
-    fprintf( fid, '''../../%s/IsoSurface%s/%s_MeanAndNormal.txt'', ''../../%s/Contour%s/%s_Area.txt'', ''../../%s/Curves%s/%s_AreaEllipse.txt'', ', ...
-                   resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI} );
+    fprintf( fid, '''../../%s/IsoSurface%s/%s_MeanAndNormal.txt'', ''../../%s/Contour%s/%s_Area.txt'', ''../../%s/Contour%s/%s_Perimeter.txt'', ''../../%s/Curves%s/%s_AreaEllipse.txt'', ', ...
+                   resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI} );
     fprintf( fid, '''../../%s/IsoSurface%s/%s_LandmarksIdOnCenterline.txt'', ''../../%s/Curves%s/%s_CurveAndLandmarks.png'', ''../../%s/Curves%s''); ', ...
                    resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI} );
     fprintf( fid, 'cd ../..; quit;"\n\n' );
