@@ -155,6 +155,11 @@ int main(int argc, char **argv)
 	FILE *pFileArea = fopen( areaFile, "wt" );
 	fprintf( pFileArea, "%d\n", nNumPoints );
 
+	// the file stroing the perimeter values
+	const char * perimeterFile = outputPerimeter.c_str();
+	FILE *pFilePerimeter = fopen( perimeterFile, "wt" );
+	fprintf( pFilePerimeter, "%d\n", nNumPoints );
+
 	// for every point on centerline, get a cut
 	std::cout << "Begin to cut ... " << std::endl;
 	for(int i=0; i<nNumPoints; i++)
@@ -178,6 +183,7 @@ int main(int argc, char **argv)
 		if(nbContours <= 0) 
 		{	
 			fprintf( pFileArea, "%lf\n", 0.0);
+			fprintf( pFilePerimeter, "%lf\n", 0.0 );
 			continue;
 		}
 
@@ -195,7 +201,6 @@ int main(int argc, char **argv)
 	
 		// allocate memorty to store the points 
 		connectFilter->SetExtractionModeToSpecifiedRegions();
-		double dCrossSectionalArea = 0;
 		Lines *pContourLines = new Lines[ connectFilter->GetOutput()->GetNumberOfLines() ];
 		int nTotalOfPoints = connectFilter->GetOutput()->GetNumberOfPoints();
         int *pContourIdPoints = new int[ nTotalOfPoints ];
@@ -206,6 +211,7 @@ int main(int argc, char **argv)
 		memset( pContourPointsFlag, 0, sizeof(int)*nTotalOfPoints );
 
 		double * pXSectionalArea = new double[ nbContours ];
+		double * pXSectionalPerimeter = new double[ nbContours ];
 		bool * pFlagShortestPath = new bool[ nbContours ];
 		memset( pFlagShortestPath, 0, sizeof(bool)*nbContours );
 		Points * pMinBoundary = new Points[ nbContours ];
@@ -383,6 +389,7 @@ int main(int argc, char **argv)
 					       ( vecCenter[i].z - dZmean ) * ( vecCenter[i].z - dZmean ) ); 
 	
 			pXSectionalArea[idx] = 0;
+			pXSectionalPerimeter[idx] = 0;
 			pFlagShortestPath[idx] = false;
 			pMinBoundary[idx].x = 0; pMinBoundary[idx].y = 0; pMinBoundary[idx].z = 0;
 			pMaxBoundary[idx].x = 0; pMaxBoundary[idx].y = 0; pMaxBoundary[idx].z = 0;
@@ -403,6 +410,16 @@ int main(int argc, char **argv)
 					if( tmp == 0 || pContourPoints[tmp+nPosTmp].z > pMaxBoundary[idx].z ) pMaxBoundary[idx].z = pContourPoints[tmp+nPosTmp].z;
 					cutPolygon->GetPointIds()->SetId( tmp, tmp );
 					cutPolygon->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
+
+					// compute the perimeter of the contour
+					if( tmp == nPointsOnContour-1 )
+					{
+						pXSectionalPerimeter[idx] += sqrt( (pContourPoints[tmp+nPosTmp].x - pContourPoints[nPosTmp].x) * (pContourPoints[tmp+nPosTmp].x - pContourPoints[nPosTmp].x) + (pContourPoints[tmp+nPosTmp].y - pContourPoints[nPosTmp].y) * (pContourPoints[tmp+nPosTmp].y - pContourPoints[nPosTmp].y) + (pContourPoints[tmp+nPosTmp].z - pContourPoints[nPosTmp].z) * (pContourPoints[tmp+nPosTmp].z - pContourPoints[nPosTmp].z) );
+					}
+					else
+					{
+						pXSectionalPerimeter[idx] += sqrt( (pContourPoints[tmp+nPosTmp].x - pContourPoints[tmp+1+nPosTmp].x) * (pContourPoints[tmp+nPosTmp].x - pContourPoints[tmp+1+nPosTmp].x) + (pContourPoints[tmp+nPosTmp].y - pContourPoints[tmp+1+nPosTmp].y) * (pContourPoints[tmp+nPosTmp].y - pContourPoints[tmp+1+nPosTmp].y) + (pContourPoints[tmp+nPosTmp].z - pContourPoints[tmp+1+nPosTmp].z) * (pContourPoints[tmp+nPosTmp].z - pContourPoints[tmp+1+nPosTmp].z) );
+					}
 				}
 				pXSectionalArea[idx] = cutPolygon->ComputeArea();
 				pFlagShortestPath[idx] = true;
@@ -519,12 +536,14 @@ int main(int argc, char **argv)
 	
 		// write the processed contours into the file	
 		std::cout << "Writing the points on contours..." << std::endl;
-		dCrossSectionalArea = 0;
+		double dCrossSectionalArea = 0;
+		double dCrossSectionalPerimeter = 0;
 		for( int idx = 0; idx < nbContours; idx++ )
 		{
 			if( pXSectionalArea[idx] != 0 && pFlagShortestPath[idx] == 1 )
 			{
 				dCrossSectionalArea += pXSectionalArea[idx];
+				dCrossSectionalPerimeter += pXSectionalPerimeter[idx];
 				if( idx == 0 )
 				{
 					fprintf( pFileTmp, "%d\n", pPosPoints[idx] + 1 );
@@ -544,7 +563,8 @@ int main(int argc, char **argv)
 			}
         }
 
-        	fprintf( pFileArea, "%lf\n", dCrossSectionalArea);  
+        fprintf( pFileArea, "%lf\n", dCrossSectionalArea );  
+		fprintf( pFilePerimeter, "%lf\n", dCrossSectionalPerimeter );
 		fclose( pFileTmp );
         fclose( pFileOriginal );
 		
@@ -558,12 +578,14 @@ int main(int argc, char **argv)
             pContourPoints.resize(0);
 		if( pContourPointsFlag ) { delete [] pContourPointsFlag; pContourPointsFlag = NULL; }
 		if( pXSectionalArea ) { delete [] pXSectionalArea; pXSectionalArea = NULL; }
+		if( pXSectionalPerimeter ) { delete [] pXSectionalPerimeter; pXSectionalPerimeter = NULL; }
 		if( pFlagShortestPath ) { delete [] pFlagShortestPath; pFlagShortestPath = NULL; }
 		if( pMinBoundary ) { delete [] pMinBoundary; pMinBoundary = NULL; }
 		if( pMaxBoundary ) { delete [] pMaxBoundary; pMaxBoundary = NULL; }
 		if( pPosPoints ) { delete [] pPosPoints; pPosPoints = NULL; }
 	}
 	fclose( pFileArea );	
+	fclose( pFilePerimeter );
 	return 0;
 }
 
