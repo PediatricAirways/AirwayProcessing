@@ -41,7 +41,7 @@
             <description>The file with the mouth's position.</description>
         </image>
 
- 	<image>
+ 		<image>
             <name>outputArea</name>
             <label>Output area file</label>
             <channel>output</channel>
@@ -49,12 +49,21 @@
             <default>None</default>
             <description>Output cross-sectional area.</description>
         </image>
+
+ 		<image>
+            <name>outputPerimeter</name>
+            <label>Output perimeter file</label>
+            <channel>output</channel>
+            <index>4</index>
+            <default>None</default>
+            <description>Output the perimeter of the cross section.</description>
+        </image>
         
         <image>
             <name>outputContourPrefix</name>
             <label>Output Contour Prefix</label>
             <channel>output</channel>
-            <index>4</index>
+            <index>5</index>
             <default>None</default>
             <description>Output cross-sectional contour, create a series of .txt file.</description>
         </image>

@@ -1,4 +1,22 @@
-function drawLandmarksOnOneCurve( meanNormFile, areaFile, ellipseAreaFile, landmarksIdOnCenterlineFile, curveAndLandmarksFile, outputPrefix )
+function drawLandmarksOnOneCurve( meanNormFile, areaFile, perimeterFile, ellipseAreaFile, landmarksIdOnCenterlineFile, curveAndLandmarksFile, outputPrefix )
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --- Pediatric Airway Atlas Processing Code  ---
+%
+%   Licensed under the Apache License, Version 2.0 (the "License");
+%   you may not use this file except in compliance with the License.
+%   You may obtain a copy of the License at
+%
+%      http://www.apache.org/licenses/LICENSE-2.0 
+%
+%   Unless required by applicable law or agreed to in writing, software
+%   distributed under the License is distributed on an "AS IS" BASIS,
+%   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%   See the License for the specific language governing permissions and
+%   limitations under the License.
+%   
+%   Author: Yi Hong
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % read the mean points and compute dist in 1D
 numf = 1;
@@ -52,7 +70,7 @@ for n = 1:numf
     nLandmarksId = sscanf( tline, '%d' );
     for iI = 1:nLandmarksId
         tline = fgets( fidLandmarksIdFile );
-	landmarksIdOnCenterline = sscanf( tline, '%d' );
+		landmarksIdOnCenterline = sscanf( tline, '%d' );
         Landmarks(n, iI) = dist( landmarksIdOnCenterline, n);
     end
 end
@@ -68,21 +86,6 @@ for n = 1:numf
         area(i,n) = sscanf(tline, '%f');
     end
     fclose(fid);
-    
-    % deal with some computing errors
-%     for i = 2:nNumArea-1
-%         if area(i-1, n) / area(i, n) > 2.5 & area(i+1, n) / area(i,n) > 2.5
-%             area(i, n) = ( area(i-1,n) + area(i+1,n) ) / 2.0;
-%         end
-%     end
-%     if area(nNumArea-1, n) / area(nNumArea, n) > 2.5
-%         area(nNumArea, n) = area(nNumArea-1, n);
-%     end
-%     for i = 1:nNumArea
-%         if area(i,n) > 600 
-%             area(i,n) = area(i,n) / 2;
-%         end
-%     end
 end
 
 % read area of ellipse
@@ -97,6 +100,19 @@ for n = 1:numf
         tline = fgets(fid);
         if(tline == -1) break; end
         areaEllipse(i,n) = sscanf(tline, '%f');
+    end
+    fclose(fid);
+end
+
+% read perimeter 
+for n = 1:numf
+    fid = fopen(perimeterFile, 'r');
+    tline = fgets(fid);
+    nNumPerimeter = sscanf(tline, '%d');
+    for i = 1:nNumPerimeter
+        tline = fgets(fid);
+        if(tline == -1) break; end
+        perimeter(i,n) = sscanf(tline, '%f');
     end
     fclose(fid);
 end
@@ -123,7 +139,6 @@ for n = 1:numf
         xValue = [ xValue(1) - 1e-7; xValue ; xValue(end) + 1e-7 ];
         yValue = [ yValue(1); yValue; yValue(end) ];
     end
-    %areafd = smooth_basis(dist(1:numP(n),n), area(1:numP(n),n), areafdPar);
     areafd = smooth_basis( xValue, yValue, areafdPar );
     
     clear yValue
@@ -132,18 +147,25 @@ for n = 1:numf
         yValue = [ yValue(1); yValue; yValue(end) ];
     end 
     areaEllipsefd = smooth_basis( xValue, yValue, areafdPar );
+	
+	clear yValue
+	yValue = perimeter(1:numP(n), n);
+    for iTmp = 1:100
+        yValue = [ yValue(1); yValue; yValue(end) ];
+    end 
+	perimeterfd = smooth_basis(xValue, yValue, areafdPar );
+
+	clear yValue 
+	yValue = 4 .* area(1:numP(n), n) ./ perimeter(1:numP(n), n);
+    for iTmp = 1:100
+        yValue = [ yValue(1); yValue; yValue(end) ];
+    end 
+	hydraulicDiameterfd = smooth_basis(xValue, yValue, areafdPar );
     
-    %areafd = smooth_basis(dist(1:numP(n),n), area(1:numP(n),n), areafdPar);
-    %areaEllipsefd = smooth_basis(dist(1:numP(n),n), areaEllipse(1:numP(n),n), areafdPar);
-    %figure, plotfit_fd(area(1:numP(n),n), dist(1:numP(n),n), areafd);
-    %hold on
-    %plotfit_fd(areaEllipse(1:numP(n),n), dist(1:numP(n),n), areaEllipsefd);
-    %hold off
-    %legend( 'AreaDots', 'AreaCurve', 'EllipseDots', 'EllipseCurve' );
-    %filename_area = sprintf('%s/areaPlot%02d.png', outputPrefix, n);
-    %saveas( gcf, filename_area );
     areafine(:,n) = eval_fd(agefine, areafd);
     areaEllipsefine(:,n) = eval_fd(agefine, areaEllipsefd);
+	perimeterfine(:,n) = eval_fd(agefine, perimeterfd);
+	hydraulicDiameter(:,n) = eval_fd(agefine, hydraulicDiameterfd);
 end
 
 rng_new = [0,1];
@@ -156,10 +178,14 @@ lambda   = 0.5*1e-6;
 fdPar_new = fdPar(basis_new, Lfdobj, lambda);
 areafd_new = smooth_basis(knots_new, areafine, fdPar_new);
 areaEllipsefd_new = smooth_basis(knots_new, areaEllipsefine, fdPar_new);
+perimeterfd_new = smooth_basis(knots_new, perimeterfine, fdPar_new);
+hydraulicDiameterfd_new = smooth_basis(knots_new, hydraulicDiameter, fdPar_new);
 
 for icase = 1:numf
     valueLM(icase, :) = eval_fd( Landmarks(icase, :), areafd_new(icase));
     valueLM_ellipse(icase, :) = eval_fd( Landmarks(icase, :), areaEllipsefd_new(icase) );
+	valueLM_perimeter(icase, :) = eval_fd( Landmarks(icase, :), perimeterfd_new(icase) );
+	valueLM_hydraulicDiameter(icase, :) = eval_fd( Landmarks(icase, :), hydraulicDiameterfd_new(icase) );
 end
 
 % draw curve and landmarks
@@ -173,8 +199,8 @@ for icase = 1:numf
     plot( dist(1:numP(icase), icase), area(1:numP(icase), icase), '.' );
 end
 hold off
-xlabel( 'Depth Along Centerline', 'FontSize', 20, 'FontWeight', 'Bold' );
-ylabel( 'Cross Sectional Area', 'FontSize', 20, 'FontWeight', 'Bold' );
+xlabel( 'Depth along the centerline', 'FontSize', 24 );
+ylabel( 'Cross-sectional area(mm^2)', 'FontSize', 24 );
 ylim( [0 1000] );
 set( gca, 'FontSize', 20, 'FontWeight', 'Bold' );
 saveas( h, curveAndLandmarksFile );
@@ -182,6 +208,35 @@ saveas( h, curveAndLandmarksFile );
 filename = sprintf( '%s/curveWithLandmarks.png', outputPrefix );
 saveas( h, filename );
 
+% draw curve of perimeter
+perimeterfile_new = eval_fd(agefine, perimeterfd_new);
+figure, plot(agefine, perimeterfile_new, 'LineWidth', 2);
+hold on
+for icase = 1:numf
+    plot(Landmarks(icase, :), valueLM_perimeter(icase, :), char(style(icase)), 'LineWidth', 10);
+    plot( dist(1:numP(icase), icase), perimeter(1:numP(icase), icase), '.' );
+end
+hold off
+xlabel( 'Depth along the centerline', 'FontSize', 24 );
+ylabel( 'Perimeter of the cross section(mm)', 'FontSize', 24 );
+filename = sprintf( '%s/curveOfPerimeter.png', outputPrefix );
+saveas( gca, filename );
+
+% draw curve of hydraulic diameter
+hydraulicDiameter_new = eval_fd(agefine, hydraulicDiameterfd_new);
+figure, plot(agefine, hydraulicDiameter_new, 'LineWidth', 2);
+hold on
+for icase = 1:numf
+    plot(Landmarks(icase, :), valueLM_hydraulicDiameter(icase, :), char(style(icase)), 'LineWidth', 10);
+    plot( dist(1:numP(icase), icase), 4.*area(1:numP(icase), icase)./perimeter(1:numP(icase), icase), '.' );
+end
+hold off
+xlabel( 'Depth along the centerline', 'FontSize', 24 );
+ylabel( 'Hydraulic diameter (mm)', 'FontSize', 24 );
+filename = sprintf( '%s/curveOfHydraulicDiameter.png', outputPrefix );
+saveas( gca, filename );
+
+% draw curve of ellipse area
 areaEllipsefine_new = eval_fd(agefine, areaEllipsefd_new);
 figure, h = plot(agefine, areaEllipsefine_new, 'LineWidth', 2);
 hold on
@@ -196,161 +251,3 @@ ylabel( 'Area' );
 ylim( [0 1000] );
 filename = sprintf( '%s/areaCurveWithLandmarksEllipse.png', outputPrefix );
 saveas( h, filename );
-
-% nLandmarks = size( Landmarks, 2 );
-% 
-% wbasisLM = create_bspline_basis([0,1], max(nLandmarks+3-2,4), 3);
-% WfdLM    = fd(zeros(max(nLandmarks+3-2,4),1),wbasisLM);
-% WfdParLM = fdPar(WfdLM,1,1e-12);
-% 
-% %  carry out the landmark registration
-% LandmarksMean = mean(Landmarks);
-% [areafdLM, areawarpfdLM, WfdLM] = ...
-%        landmarkreg(areafd_new, Landmarks, LandmarksMean, WfdParLM, 1);
-%    
-% %  plot registered accelerations along with warping functions
-% areamatUR = eval_fd(agefine, areafd_new);
-% areamatLM = eval_fd(agefine, areafdLM);
-% areawarpmatLM  = eval_fd(agefine, areawarpfdLM);
-% areawarpmatLM(1,:) = 0; areawarpmatLM(length(agefine),:) = 1;
-% % figure, plot(agefine, radiusmatUR, 'LineWidth', 2);
-% figure, plot(agefine, areamatLM, 'LineWidth', 2);
-% rangeY = get(gca,'ylim');
-% liney = linspace(rangeY(1), rangeY(2), 10);
-% linex = liney;
-% hold on
-% plot(agefine, mean(areamatLM, 2), 'm--', 'LineWidth', 3);
-% for icase = 1:numf
-%     warpInvfd = smooth_basis(areawarpmatLM(:,icase), agefine, fdPar_new);
-%     warpedLM(icase,:) = eval_fd(Landmarks(icase,:), warpInvfd);
-%     valueLM(icase, :) = eval_fd(warpedLM(icase,:), areafdLM(icase));
-%     plot(warpedLM(icase, :), valueLM(icase, :), char(style(icase)), 'LineWidth', 10);
-% end
-% warpedLMSGS08 = eval_fd( LandmarksSGS08, warpInvfd );
-% valueLMSGS08 = eval_fd( warpedLMSGS08, areafdLM(3) );
-% plot( warpedLMSGS08, valueLMSGS08, 'ro', 'LineWidth', 5 );
-% % for nLM = 1:nLandmarks 
-% %     linex(:) = LandmarksMean(nLM);
-% %     plot(linex, liney, 'm-');
-% % end
-% hold off
-% xlabel( 'Position' );
-% ylabel( 'Area' );
-% legend( legends );
-
-% index = 1:numf;
-% nbasisw = 15;
-% norder  =  5;
-% basisw  = create_bspline_basis([0,1], nbasisw, norder);
-% coef0 = zeros(nbasisw, length(index));
-% Wfd0 = fd(coef0, basisw);
-% Lfdobj = int2Lfd(2);
-% lambda = 1;
-% WfdPar = fdPar(Wfd0, Lfdobj, lambda);
-% % register landmark-registered area
-% areaLMmeanfd = mean(areafdLM);
-% [areaLMCregfd, areaLMCwarpfd] = registerfd(areaLMmeanfd, areafdLM, WfdPar);
-% areaLMCfine = eval_fd(agefine, areaLMCregfd);
-% areaLMCwarpmat = eval_fd(agefine, areaLMCwarpfd);
-% areaLMCwarpmat(1,:) = 0; areaLMCwarpmat(length(agefine), :) = 1;
-% figure, plot(agefine, areaLMCfine, 'LineWidth', 2);
-% hold on
-% for icase = 1:numf
-%     warpInvfd = smooth_basis(areaLMCwarpmat(:,icase), agefine, fdPar_new);
-%     warpedLMC(icase,:) = eval_fd(warpedLM(icase,:), warpInvfd);
-%     valueLM(icase,:) = eval_fd(warpedLMC(icase,:), areaLMCregfd(icase));
-%     plot(warpedLMC(icase, :), valueLM(icase, :), char(style(icase)));
-% end
-% for nLM = 1:nLandmarks 
-%     linex(:) = LandmarksMean(nLM);
-%     plot(linex, liney, 'm-');
-% end
-% hold off
-% 
-% 
-% % landmarks registration for radius
-% nLandmarks = 4;
-% Landmarks = zeros(numf, nLandmarks);
-% valueLM = zeros(numf, nLandmarks);
-% figure, subplot(1,1,1),
-% for icase = 1:numf
-%     radius = eval_fd(agefine, radiusfd_new(icase));
-%     plot(agefine, radius);
-%     for nLM = 1:nLandmarks
-%         value = ginput(1);
-%         Landmarks(icase, nLM) = value(1);
-%         valueLM(icase, nLM) = eval_fd(value(1), radiusfd_new(icase));
-%     end
-%     pause;
-% end
-% 
-% style = {'bo', 'go', 'ro', 'co'};
-% radiusfine_new = eval_fd(agefine, radiusfd_new);
-% figure, plot(agefine, radiusfine_new, 'LineWidth', 2);
-% hold on
-% for icase = 1:numf
-%     plot(Landmarks(icase, :), valueLM(icase, :), char(style(icase)));
-% end
-% hold off
-% 
-% wbasisLM = create_bspline_basis([0,1], max(nLandmarks+3-2,4), 3);
-% WfdLM    = fd(zeros(max(nLandmarks+3-2,4),1),wbasisLM);
-% WfdParLM = fdPar(WfdLM,1,1e-12);
-% 
-% %  carry out the landmark registration
-% LandmarksMean = mean(Landmarks);
-% [radiusfdLM, radiuswarpfdLM, WfdLM] = ...
-%        landmarkreg(radiusfd_new, Landmarks, LandmarksMean, WfdParLM, 1);
-%    
-% %  plot registered accelerations along with warping functions
-% radiusmatUR = eval_fd(agefine, radiusfd_new);
-% radiusmatLM = eval_fd(agefine, radiusfdLM);
-% radiuswarpmatLM  = eval_fd(agefine, radiuswarpfdLM);
-% radiuswarpmatLM(1,:) = 0; radiuswarpmatLM(length(agefine),:) = 1;
-% % figure, plot(agefine, radiusmatUR, 'LineWidth', 2);
-% figure, plot(agefine, radiusmatLM, 'LineWidth', 2);
-% rangeY = get(gca,'ylim');
-% liney = linspace(rangeY(1), rangeY(2), 10);
-% linex = liney;
-% hold on
-% for icase = 1:numf
-%     warpInvfd = smooth_basis(radiuswarpmatLM(:,icase), agefine, fdPar_new);
-%     warpedLM(icase,:) = eval_fd(Landmarks(icase,:), warpInvfd);
-%     valueLM(icase, :) = eval_fd(warpedLM(icase,:), radiusfdLM(icase));
-%     plot(warpedLM(icase, :), valueLM(icase, :), char(style(icase)));
-% end
-% for nLM = 1:nLandmarks 
-%     linex(:) = LandmarksMean(nLM);
-%     plot(linex, liney, 'm-');
-% end
-% hold off
-% % figure, plot(agefine, radiuswarpmatLM);
-% 
-% index = 1:numf;
-% nbasisw = 15;
-% norder  =  5;
-% basisw  = create_bspline_basis([0,1], nbasisw, norder);
-% coef0 = zeros(nbasisw, length(index));
-% Wfd0 = fd(coef0, basisw);
-% Lfdobj = int2Lfd(2);
-% lambda = 1;
-% WfdPar = fdPar(Wfd0, Lfdobj, lambda);
-% % register landmark-registered radius
-% radiusLMmeanfd = mean(radiusfdLM);
-% [radiusLMCregfd, radiusLMCwarpfd] = registerfd(radiusLMmeanfd, radiusfdLM, WfdPar);
-% radiusLMCfine = eval_fd(agefine, radiusLMCregfd);
-% radiusLMCwarpmat = eval_fd(agefine, radiusLMCwarpfd);
-% radiusLMCwarpmat(1,:) = 0; radiusLMCwarpmat(length(agefine), :) = 1;
-% figure, plot(agefine, radiusLMCfine, 'LineWidth', 2);
-% hold on
-% for icase = 1:numf
-%     warpInvfd = smooth_basis(radiusLMCwarpmat(:,icase), agefine, fdPar_new);
-%     warpedLMC(icase,:) = eval_fd(warpedLM(icase,:), warpInvfd);
-%     valueLM(icase,:) = eval_fd(warpedLMC(icase,:), radiusLMCregfd(icase));
-%     plot(warpedLMC(icase, :), valueLM(icase, :), char(style(icase)));
-% end
-% for nLM = 1:nLandmarks 
-%     linex(:) = LandmarksMean(nLM);
-%     plot(linex, liney, 'm-');
-% end
-% hold off

@@ -75,7 +75,7 @@ Module_EXPORT char XMLModuleDescription[] =
 "            <description>The file with the mouth's position.</description>\n"
 "        </image>\n"
 "\n"
-" 	<image>\n"
+" 		<image>\n"
 "            <name>outputArea</name>\n"
 "            <label>Output area file</label>\n"
 "            <channel>output</channel>\n"
@@ -83,12 +83,21 @@ Module_EXPORT char XMLModuleDescription[] =
 "            <default>None</default>\n"
 "            <description>Output cross-sectional area.</description>\n"
 "        </image>\n"
+"\n"
+" 		<image>\n"
+"            <name>outputPerimeter</name>\n"
+"            <label>Output perimeter file</label>\n"
+"            <channel>output</channel>\n"
+"            <index>4</index>\n"
+"            <default>None</default>\n"
+"            <description>Output the perimeter of the cross section.</description>\n"
+"        </image>\n"
 "        \n"
 "        <image>\n"
 "            <name>outputContourPrefix</name>\n"
 "            <label>Output Contour Prefix</label>\n"
 "            <channel>output</channel>\n"
-"            <index>4</index>\n"
+"            <index>5</index>\n"
 "            <default>None</default>\n"
 "            <description>Output cross-sectional contour, create a series of .txt file.</description>\n"
 "        </image>\n"
@@ -172,6 +181,7 @@ char *GetXMLModuleDescription()
     std::string inputMeanNorm = "None"; \
     std::string inputMouthPosition = "None"; \
     std::string outputArea = "None"; \
+    std::string outputPerimeter = "None"; \
     std::string outputContourPrefix = "None"; \
     bool echoSwitch = false; \
     bool xmlSwitch = false; \
@@ -203,6 +213,9 @@ char *GetXMLModuleDescription()
  \
     msg.str("");msg << "Output cross-sectional area. (default: " << outputArea << ")"; \
     TCLAP::UnlabeledValueArg<std::string> outputAreaArg("outputArea", msg.str(), 1, outputArea, "std::string", commandLine); \
+ \
+    msg.str("");msg << "Output the perimeter of the cross section. (default: " << outputPerimeter << ")"; \
+    TCLAP::UnlabeledValueArg<std::string> outputPerimeterArg("outputPerimeter", msg.str(), 1, outputPerimeter, "std::string", commandLine); \
  \
     msg.str("");msg << "Output cross-sectional contour, create a series of .txt file. (default: " << outputContourPrefix << ")"; \
     TCLAP::UnlabeledValueArg<std::string> outputContourPrefixArg("outputContourPrefix", msg.str(), 1, outputContourPrefix, "std::string", commandLine); \
@@ -333,6 +346,7 @@ try \
     inputMeanNorm = inputMeanNormArg.getValue(); \
     inputMouthPosition = inputMouthPositionArg.getValue(); \
     outputArea = outputAreaArg.getValue(); \
+    outputPerimeter = outputPerimeterArg.getValue(); \
     outputContourPrefix = outputContourPrefixArg.getValue(); \
     echoSwitch = echoSwitchArg.getValue(); \
     xmlSwitch = xmlSwitchArg.getValue(); \
@@ -352,6 +366,7 @@ std::cout << "    inputModelVTK: " << inputModelVTK << std::endl; \
 std::cout << "    inputMeanNorm: " << inputMeanNorm << std::endl; \
 std::cout << "    inputMouthPosition: " << inputMouthPosition << std::endl; \
 std::cout << "    outputArea: " << outputArea << std::endl; \
+std::cout << "    outputPerimeter: " << outputPerimeter << std::endl; \
 std::cout << "    outputContourPrefix: " << outputContourPrefix << std::endl; \
 std::cout << "    echoSwitch: " << echoSwitch << std::endl; \
 std::cout << "    xmlSwitch: " << xmlSwitch << std::endl; \

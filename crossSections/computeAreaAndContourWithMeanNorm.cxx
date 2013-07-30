@@ -1,6 +1,24 @@
 // ComputeArea.cpp : Defines the entry point for the console application.
 //
 
+/*=============================================================================
+//  --- Cross-sectional area ---+
+//
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0 
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//
+//  Author: Yi Hong
+=============================================================================*/
+
 #include "vtkCutter.h"
 #include "vtkPlane.h"
 #include "vtkPolyDataReader.h"
@@ -36,65 +54,43 @@ int main(int argc, char **argv)
 {
 	PARSE_ARGS;
 
-	/*
-	string szFilePathName;
-	//CString szFileName;
-	string szExtName;
-	szFilePathName = inputModelVTK.c_str();
-	//szFileName = szFilePathName.Mid( szFilePathName.ReverseFind('\\') + 1 );
-	szExtName = szFilePathName.Mid( szFilePathName.ReversEFind('.') + 1 );
-	*/
-
-	//string strFileName = inputModelVTK.c_str();
+	// deal with input files in different formats, .vtp and .vtk
 	int nPosExt = inputModelVTK.rfind( "." );
-	string strExtName = inputModelVTK.substr( nPosExt + 1 );
-
-	std::cout << nPosExt << " " << strExtName << std::endl;
-	
-	//vtkPolyData* airway = NULL;
+	string strExtName = inputModelVTK.substr( nPosExt + 1 );	
 	VTK_CREATE( vtkPolyData, airway );
 	if( !strcmp( strExtName.c_str(), "vtp" ) )
 	{
 		// read .vtp model
 		std::cout << " read .vtp model: " << inputModelVTK << std::endl;
 		VTK_CREATE(vtkXMLPolyDataReader, vtkReader);
-		//vtkXMLPolyDataReader * vtkReader = vtkXMLPolyDataReader::New();
 		vtkReader->SetFileName(inputModelVTK.c_str());
 		vtkReader->Update();
 		airway->CopyStructure( vtkReader->GetOutput() );
 		if( airway == NULL ) std::cout << "Airway is null." << std::endl;
-		//vtkReader->Delete();
 	}
 	else if( !strcmp( strExtName.c_str(), "vtk" ) )
 	{
-		std::cout << " read .vtk model ... " << std::endl;
+		// read .vtk model
+		std::cout << " read .vtk model ... " << inputModelVTK << std::endl;
 		VTK_CREATE( vtkPolyDataReader, vtkReader );
-		//vtkPolyDataReader * vtkReader = vtkPolyDataReader::New();
 		vtkReader->SetFileName( inputModelVTK.c_str() );
 		vtkReader->Update();
 		airway->CopyStructure( vtkReader->GetOutput() );
-		//vtkReader->Delete();
+		if( airway == NULL ) std::cout << "Airway is null." << std::endl;
 	}
 	else
 	{
 		std::cout << "Unknown file format!" << std::endl;
 		return 0;
 	}
-		
-	// cell locator and intersection parameters
-	/*VTK_CREATE( vtkCellLocator, locator );
-	locator->SetDataSet(airway);
-	locator->CacheCellBoundsOn();
-	locator->BuildLocator();
-	double tolerance = 0.001, lineParameter, intersect[3], paraCoord[3];
-	int sub_id;*/
 
+	// get the boundary box for futher use and also to show the airway exists
 	double bounds[6];
 	airway->GetBounds( bounds );
 	std::cout << bounds[0] << " " << bounds[1] << " " << bounds[2] << " " 
 		   << bounds[3] << " " << bounds[4] << " " << bounds[5] << std::endl; 
 
-	// read points from center and norm file
+	// read points from centerline to get the center and normal for the cutting plane
 	std::cout << "Read points from centerline file ... " << std::endl;
 	const char * meanPointsFile = inputMeanNorm.c_str();
 	FILE * pFile = fopen(meanPointsFile, "r");
@@ -117,7 +113,7 @@ int main(int argc, char **argv)
 	}
 	fclose(pFile);
 
- 	// read mouth's position from the file
+ 	// read mouth's position from the file, if the geometry has a mouth, it will be removed
 	std::cout << "Read mouth's position from the file ... " << std::endl;
 	double mouthCenter[3];
 	double mouthRadius;
@@ -144,159 +140,135 @@ int main(int argc, char **argv)
 	}
 	if( bMouth )
 	{
+		std::cout<< "Remove mouth: " << std::endl;
 		std::cout<< mouthCenter[0] << " " << mouthCenter[1] << " " << mouthCenter[2] << std::endl;
 		std::cout<< mouthRadius << std::endl;
 	}
-
-	// read landmarks for starting searching the shortest parth
-/*	std::cout << "Read landmarks ... " << std::endl;
-	double sourcePntLeft[3];
-	double sourcePntRight[3];
-	int bSourcePnts = 0;
-	const char * landmarksFile = inputLandmarkPosition.c_str();
-	pFile = fopen( landmarksFile, "r" );
-	if( pFile )
-	{
-		while( fgets( strLine, 256, pFile ) )
-		{
-			char strKey[256];
-			sscanf( strLine, "%s :", strKey );
-			if( !strcmp( strKey, "LeftAlaRim" ) )
-			{	
-				sscanf( strLine, "%s : %lf %lf %lf", strKey, &sourcePntLeft[0], &sourcePntLeft[1], &sourcePntLeft[2] );
-				bSourcePnts++;
-			}
-			else if( !strcmp( strKey, "RightAlaRim" ) )
-			{
-				sscanf( strLine, "%s : %lf %lf %lf", strKey, &sourcePntRight[0], &sourcePntRight[1], &sourcePntRight[2] );
-				bSourcePnts++;
-			}
-		}
-		if( bSourcePnts < 2 )
-		{
-			std::cout << "Left or/and right alaRims are missing." << std::endl;
-		}
-		else
-		{
-			std::cout << "Left: "  << sourcePntLeft[0] << ", " << sourcePntLeft[1] << ", " << sourcePntLeft[2] << ", "
-				  << "Right: " << sourcePntRight[0] << ", " << sourcePntRight[1] << ", " << sourcePntRight[2] << std::endl; 
-		}
-		fclose( pFile );
-	}*/
 	
-	// vtkCutter 
+	// Compute the cross-sectional areas
 	VTK_CREATE(vtkCutter, cutter);
 	cutter->SetInput(airway);
 	VTK_CREATE(vtkPlane, plane);
 	
+	// the file storing the area values
 	const char * areaFile = outputArea.c_str();
 	FILE *pFileArea = fopen( areaFile, "wt" );
 	fprintf( pFileArea, "%d\n", nNumPoints );
+
+	// the file stroing the perimeter values
+	const char * perimeterFile = outputPerimeter.c_str();
+	FILE *pFilePerimeter = fopen( perimeterFile, "wt" );
+	fprintf( pFilePerimeter, "%d\n", nNumPoints );
+
 	// for every point on centerline, get a cut
-	std::cout << " Begin to cut ... " << std::endl;
+	std::cout << "Begin to cut ... " << std::endl;
 	for(int i=0; i<nNumPoints; i++)
 	{
-		//printf("Begin to cut %d\n", i+1);
+		std::cout << "Point " << i+1 << std::endl;
+
+		// cutting plane based on the point on the centerline and its tangent normal
 		plane->SetOrigin(vecCenter[i].x, vecCenter[i].y, vecCenter[i].z);
 		plane->SetNormal(vecNorm[i].x, vecNorm[i].y, vecNorm[i].z);
 		cutter->SetCutFunction(plane);
 		cutter->Update();
 
-                // compute the connected regions
+        // compute the connected regions, usually more than one contour
 		VTK_CREATE( vtkPolyDataConnectivityFilter, connectFilter );
 		connectFilter->SetExtractionModeToAllRegions();
 		connectFilter->SetInputConnection( cutter->GetOutputPort() );
 		connectFilter->Update();
 		int nbContours = connectFilter->GetNumberOfExtractedRegions();
-		// nbContours, connectFilter->GetOutput()->GetNumberOfPoints(), connectFilter->GetOutput()->GetNumberOfVerts(), connectFilter->GetOutput()->GetNumberOfLines(), connectFilter->GetOutput()->GetNumberOfPolys(), connectFilter->GetOutput()->GetNumberOfStrips() );
+	
+		// no contour is found, the area is zero
 		if(nbContours <= 0) 
 		{	
-			fprintf( pFileArea, "%lf\n", 0);
+			fprintf( pFileArea, "%lf\n", 0.0);
+			fprintf( pFilePerimeter, "%lf\n", 0.0 );
 			continue;
 		}
 
+		// store the contour information for further visualization
+		// the following file stores the contour after processing, like remove the points in the mounth region
 		char fName[256];
-                sprintf(fName, "%s%03d.txt", outputContourPrefix.c_str(), i+1);
-                FILE * pFileTmp = fopen(fName, "wt");
-                fprintf(pFileTmp, "%d %d\n", connectFilter->GetOutput()->GetNumberOfPoints(), nbContours);
-	        
+        sprintf(fName, "%s%03d.txt", outputContourPrefix.c_str(), i+1);
+        FILE * pFileTmp = fopen(fName, "wt");
+        fprintf(pFileTmp, "%d %d\n", connectFilter->GetOutput()->GetNumberOfPoints(), nbContours);
+
+        // the following file stores all the points producted by the cutting
  		sprintf(fName, "%sOriginal%03d.txt", outputContourPrefix.c_str(), i+1);
-                FILE * pFileOriginal = fopen(fName, "wt");
-                fprintf(pFileOriginal, "%d %d\n", connectFilter->GetOutput()->GetNumberOfPoints(), nbContours);
+        FILE * pFileOriginal = fopen(fName, "wt");
+        fprintf(pFileOriginal, "%d %d\n", connectFilter->GetOutput()->GetNumberOfPoints(), nbContours);
 	
+		// allocate memorty to store the points 
 		connectFilter->SetExtractionModeToSpecifiedRegions();
-		double dCrossSectionalArea = 0;
 		Lines *pContourLines = new Lines[ connectFilter->GetOutput()->GetNumberOfLines() ];
 		int nTotalOfPoints = connectFilter->GetOutput()->GetNumberOfPoints();
-                int *pContourIdPoints = new int[ nTotalOfPoints ];
-		Points * pContourPoints = new Points[ nTotalOfPoints ];
-		memset( pContourPoints, 0, sizeof(Points)*nTotalOfPoints );
+        int *pContourIdPoints = new int[ nTotalOfPoints ];
+        //Points * pContourPoints = new Points[ nTotalOfPoints ];
+        //memset( pContourPoints, 0, sizeof(Points)*nTotalOfPoints );
+        std::vector<Points> pContourPoints;
 		int * pContourPointsFlag = new int[ nTotalOfPoints ];
 		memset( pContourPointsFlag, 0, sizeof(int)*nTotalOfPoints );
 
-	     	//std::cout << "nTotalOfPoints: " << nTotalOfPoints << " , nLines: " << connectFilter->GetOutput()->GetNumberOfLines() << std::endl;
 		double * pXSectionalArea = new double[ nbContours ];
+		double * pXSectionalPerimeter = new double[ nbContours ];
 		bool * pFlagShortestPath = new bool[ nbContours ];
 		memset( pFlagShortestPath, 0, sizeof(bool)*nbContours );
 		Points * pMinBoundary = new Points[ nbContours ];
 		Points * pMaxBoundary = new Points[ nbContours ];
-		//double * pDistLeft = new double[ nbContours ];
-		//Points * pNewSourceLeft = new Points[ nbContours ];
-		//Points * pNewSourceRight = new Points[ nbContours ];
-		//double * pDistRight = new double[ nbContours ];
 		int * pPosPoints = new int [ nbContours ];
-		std::cout << "nbContours: " << nbContours << std::endl;
-		//int bFlagLeft = 0;
-		//int bFlagRight = 0;
-		for( int idx = 0; idx < nbContours; idx++ )
+
+		// connect the points into contours
+        std::cout << "nbContours: " << nbContours << std::endl;
+        for( int idx = 0; idx < nbContours; idx++ )
 		{
+			//std::cout << "Contour " << idx << " -- ";
 			connectFilter->InitializeSpecifiedRegionList();
-			connectFilter->AddSpecifiedRegion( idx );
+            connectFilter->AddSpecifiedRegion( idx );
 			connectFilter->Update();
 		 	
 			VTK_CREATE( vtkCellArray, lines );
-                	lines = connectFilter->GetOutput()->GetLines();
+            lines = connectFilter->GetOutput()->GetLines();
 			int nbLines = lines->GetNumberOfCells();
-                        int nbPoints = connectFilter->GetOutput()->GetNumberOfPoints();
-			
-			std::cout << "nbLines: " << nbLines << ", nbPoints: " << nbPoints << std::endl;
+            int nbPoints = connectFilter->GetOutput()->GetNumberOfPoints();
 			
 			if( nbLines <= 1 ) 
 			{
 				if( idx == 0 ) pPosPoints[idx] = -1;
-                        	else pPosPoints[idx] = pPosPoints[idx-1];	
+                else pPosPoints[idx] = pPosPoints[idx-1];
 				continue;
 			}
 			vtkIdType npts, *pts;
 			int nLineCount = 0;
+
+			// write contours into files
 			fprintf(pFileOriginal, "%d\n", nbLines );
-                	for( lines->InitTraversal(); lines->GetNextCell( npts, pts); nLineCount++ )
-                	{		
+            for( lines->InitTraversal(); lines->GetNextCell( npts, pts); nLineCount++ )
+            {
 				pContourLines[nLineCount].id1 = pts[0];
 				pContourLines[nLineCount].id2 = pts[1];
 				pContourLines[nLineCount].bFlag = 0;
 				pContourPointsFlag[ pts[0] ]++;
 				pContourPointsFlag[ pts[1] ]++;
 				fprintf(pFileOriginal, "%d %d\n", pts[0], pts[1] );
-                	}
+             }
 
 
 			 // deal with the same edges
-                        for( int iM = 0; iM < nLineCount; iM++ )
-                        {
-                                for( int iN = 0; iN < nLineCount; iN++ )
-                                {
-                                        if( iN == iM ) continue;
-                                        if( pContourLines[iM].id1 == pContourLines[iN].id1 && pContourLines[iM].id2 == pContourLines[iN].id2 || pContourLines[iM].id1 == pContourLines[iN].id2 && pContourLines[iM].id2 == pContourLines[iN].id1 )
-                                        {
-                                                pContourLines[iM].bFlag = 1;
-                                                pContourLines[iN].bFlag = 1;
-                                        }
-                                }
-                        }
+             for( int iM = 0; iM < nLineCount; iM++ )
+             {
+                for( int iN = 0; iN < nLineCount; iN++ )
+                {
+                    if( iN == iM ) continue;
+                    if( pContourLines[iM].id1 == pContourLines[iN].id1 && pContourLines[iM].id2 == pContourLines[iN].id2 || pContourLines[iM].id1 == pContourLines[iN].id2 && pContourLines[iM].id2 == pContourLines[iN].id1 )
+                    {
+                        pContourLines[iM].bFlag = 1;
+                        pContourLines[iN].bFlag = 1;
+                    }
+                }
+            }
 
-			std::cout << "nLineCounts: " << nLineCount << std::endl;
-						
+			// connect lines into a loop	
 			int curPos = 0;
 			pContourIdPoints[curPos] = pContourLines[0].id1;
 			curPos++;
@@ -344,7 +316,6 @@ int main(int argc, char **argv)
 						{
 							if( pContourIdPoints[curPos] != iTmp && pContourPointsFlag[ iTmp ] == 1 ) 
 							{
-								std::cout << iTmp << " " << pContourIdPoints[curPos] << std::endl;
 								if( iTmp != pContourIdPoints[0] )
 								{
 									curPos++;
@@ -370,9 +341,7 @@ int main(int argc, char **argv)
 				if( pContourPointsFlag[iTmp] == 1 ) pContourPointsFlag[iTmp] = 2;
 			}
 			
-			std::cout << "Begin to compute area... " << curPos+1 << std::endl;
 			int nPointsOnContour = curPos+1;
-
 			// record the position of the last point in current contour
 			if( idx == 0 ) pPosPoints[idx] = curPos;
 			else pPosPoints[idx] = pPosPoints[idx-1] + nPointsOnContour;
@@ -385,15 +354,18 @@ int main(int argc, char **argv)
 			double dXmean = 0;
 			double dYmean = 0;
 			double dZmean = 0;
-			std::cout << "nPosTmp: " << nPosTmp << ", nPointsOnContpur: " << nPointsOnContour << ", pPosPoints[idx]" << pPosPoints[idx] << std::endl;
-			std::cout << idx <<  " : " << pPosPoints[idx] <<  std::endl;
 			for( int tmp = 0; tmp < nPointsOnContour; tmp++ )
-                        {
-                                double pointPos[3];
-                                connectFilter->GetOutput()->GetPoint( pContourIdPoints[tmp], pointPos );
-                                pContourPoints[tmp+nPosTmp].x = pointPos[0];
-				pContourPoints[tmp+nPosTmp].y = pointPos[1];
-				pContourPoints[tmp+nPosTmp].z = pointPos[2];
+            {
+                double pointPos[3];
+                connectFilter->GetOutput()->GetPoint( pContourIdPoints[tmp], pointPos );
+                //pContourPoints[tmp+nPosTmp].x = pointPos[0];
+                //pContourPoints[tmp+nPosTmp].y = pointPos[1];
+                //pContourPoints[tmp+nPosTmp].z = pointPos[2];
+                Points tmpPoint;
+                tmpPoint.x = pointPos[0];
+                tmpPoint.y = pointPos[1];
+                tmpPoint.z = pointPos[2];
+                pContourPoints.push_back(tmpPoint);
 
 				if( sqrt( ( pointPos[0] - mouthCenter[0] ) * ( pointPos[0] - mouthCenter[0] ) + 
 					  ( pointPos[1] - mouthCenter[1] ) * ( pointPos[1] - mouthCenter[1] ) + 
@@ -405,7 +377,7 @@ int main(int argc, char **argv)
 				dXmean += pointPos[0];
 				dYmean += pointPos[1];
 				dZmean += pointPos[2];
-                        }
+            }
 			if( nPointsOnContour != 0 )
 			{
 				dXmean /= nPointsOnContour;
@@ -415,58 +387,20 @@ int main(int argc, char **argv)
 			double distTmp = sqrt( ( vecCenter[i].x - dXmean ) * ( vecCenter[i].x - dXmean ) + 
 					       ( vecCenter[i].y - dYmean ) * ( vecCenter[i].y - dYmean ) + 
 					       ( vecCenter[i].z - dZmean ) * ( vecCenter[i].z - dZmean ) ); 
-
-			std::cout<< "dist " << idx << ": " << distTmp << std::endl;
-
-			// project the left and right algrim onto the cutting plane
-			/*avg_a = vecNorm[i].x; avg_b = vecNorm[i].y; avg_c = vecNorm[i].z;
-			avg_abc = avg_a * avg_a + avg_b * avg_b + avg_c * avg_c;
-			avg_d = -( vecNorm[i].x * vecCenter[i].x + vecNorm[i].y * vecCenter[i].y + vecNorm[i].z * vecCenter[i].z );
-
-			avg_t0 = ( avg_a * sourcePntLeft[0] + avg_b * sourcePntLeft[1] + avg_c * sourcePntLeft[2] + avg_d ) / avg_abc;
-			sourcePntLeft[0] = sourcePntLeft[0] - avg_a * avg_t0;
-			sourcePntLeft[1] = sourcePntLeft[1] - avg_b * avg_t0;
-			sourcePntLeft[2] = sourcePntLeft[2] - avg_c * avg_t0;
-
-			avg_t0 = ( avg_a * sourcePntRight[0] + avg_b * sourcePntRight[1] + avg_c * sourcePntRight[2] + avg_d ) / avg_abc;
-                        sourcePntRight[0] = sourcePntRight[0] - avg_a * avg_t0;
-                        sourcePntRight[1] = sourcePntRight[1] - avg_b * avg_t0;
-                        sourcePntRight[2] = sourcePntRight[2] - avg_c * avg_t0;*/
-			
+	
 			pXSectionalArea[idx] = 0;
-			pFlagShortestPath[idx] = 0;
+			pXSectionalPerimeter[idx] = 0;
+			pFlagShortestPath[idx] = false;
 			pMinBoundary[idx].x = 0; pMinBoundary[idx].y = 0; pMinBoundary[idx].z = 0;
 			pMaxBoundary[idx].x = 0; pMaxBoundary[idx].y = 0; pMaxBoundary[idx].z = 0;
+			// sometime the cutting result includes some points far arway, only compute the cross-sectional area for those close to the center
 			if( !bInMouth && distTmp < 40 )
-			{ 
-				// project the left and right algrim onto the cutting plane
-				/*double avg_a, avg_b, avg_c, avg_abc, avg_d, avg_t0;
-              	        	avg_a = vecNorm[i].x; avg_b = vecNorm[i].y; avg_c = vecNorm[i].z;
-                        	avg_abc = avg_a * avg_a + avg_b * avg_b + avg_c * avg_c;
-                        	avg_d = -( vecNorm[i].x * vecCenter[i].x + vecNorm[i].y * vecCenter[i].y + vecNorm[i].z * vecCenter[i].z );
-
-				double sourcePntProjLeft[3];
-                        	avg_t0 = ( avg_a * sourcePntLeft[0] + avg_b * sourcePntLeft[1] + avg_c * sourcePntLeft[2] + avg_d ) / avg_abc;
-                        	sourcePntProjLeft[0] = sourcePntLeft[0] - avg_a * avg_t0;
-                        	sourcePntProjLeft[1] = sourcePntLeft[1] - avg_b * avg_t0;
-                        	sourcePntProjLeft[2] = sourcePntLeft[2] - avg_c * avg_t0;
-				
-				double sourcePntProjRight[3];
-                        	avg_t0 = ( avg_a * sourcePntRight[0] + avg_b * sourcePntRight[1] + avg_c * sourcePntRight[2] + avg_d ) / avg_abc;
-                        	sourcePntProjRight[0] = sourcePntRight[0] - avg_a * avg_t0;
-                        	sourcePntProjRight[1] = sourcePntRight[1] - avg_b * avg_t0;
-                        	sourcePntProjRight[2] = sourcePntRight[2] - avg_c * avg_t0;*/
-			
-				std::cout << "points on Contour: " << nPointsOnContour << std::endl;	
-					
+			{ 	
 				VTK_CREATE( vtkPolygon, cutPolygon );
-				//vtkPolygon * cutPolygon = vtkPolygon::New();
 				cutPolygon->GetPointIds()->SetNumberOfIds( nPointsOnContour );
 				cutPolygon->GetPoints()->SetNumberOfPoints( nPointsOnContour );
-				//fprintf( pFileTmp, "%d\n", nPointsOnContour );
 				for( int tmp = 0; tmp < nPointsOnContour; tmp++ )
 				{
-					//fprintf( pFileTmp, "%lf %lf %lf\n", pContourPoints[tmp].x, pContourPoints[tmp].y, pContourPoints[tmp].z ); 
 					// record the boundary box for current contour
 					if( tmp == 0 || pContourPoints[tmp+nPosTmp].x < pMinBoundary[idx].x ) pMinBoundary[idx].x = pContourPoints[tmp+nPosTmp].x;
 					if( tmp == 0 || pContourPoints[tmp+nPosTmp].y < pMinBoundary[idx].y ) pMinBoundary[idx].y = pContourPoints[tmp+nPosTmp].y;
@@ -476,259 +410,24 @@ int main(int argc, char **argv)
 					if( tmp == 0 || pContourPoints[tmp+nPosTmp].z > pMaxBoundary[idx].z ) pMaxBoundary[idx].z = pContourPoints[tmp+nPosTmp].z;
 					cutPolygon->GetPointIds()->SetId( tmp, tmp );
 					cutPolygon->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
-					/*if( i > 0 )
+
+					// compute the perimeter of the contour
+					if( tmp == nPointsOnContour-1 )
 					{
-						double dDistXTmp = sourcePntLeft[0] - pContourPoints[tmp+nPosTmp].x;
-						double dDistYTmp = sourcePntLeft[1] - pContourPoints[tmp+nPosTmp].y;
-						double dDistZTmp = sourcePntLeft[2] - pContourPoints[tmp+nPosTmp].z;
-						double dDistTmp = sqrt( dDistXTmp * dDistXTmp + dDistYTmp * dDistYTmp + dDistZTmp * dDistZTmp );
-						if( tmp == 0 || pDistLeft[idx] > dDistTmp )
-						{
-							pDistLeft[idx] = dDistTmp;
-							pNewSourceLeft[idx].x = pContourPoints[tmp+nPosTmp].x;
-							pNewSourceLeft[idx].y = pContourPoints[tmp+nPosTmp].y;
-							pNewSourceLeft[idx].z = pContourPoints[tmp+nPosTmp].z;
-						}
-	 
-						dDistXTmp = sourcePntRight[0] - pContourPoints[tmp+nPosTmp].x;
-                                                dDistYTmp = sourcePntRight[1] - pContourPoints[tmp+nPosTmp].y;
-                                             	dDistZTmp = sourcePntRight[2] - pContourPoints[tmp+nPosTmp].z;
-                                                dDistTmp = sqrt( dDistXTmp * dDistXTmp + dDistYTmp * dDistYTmp + dDistZTmp * dDistZTmp );
-                                                if( tmp == 0 || pDistRight[idx] > dDistTmp )
-                                                {
-                                                        pDistRight[idx] = dDistTmp;
-                                                        pNewSourceRight[idx].x = pContourPoints[tmp+nPosTmp].x;
-                                                        pNewSourceRight[idx].y = pContourPoints[tmp+nPosTmp].y;
-                                                        pNewSourceRight[idx].z = pContourPoints[tmp+nPosTmp].z;
-                                                }
-					}*/
-				}
-
-				/*double dDistXTmp = sourcePntLeft[0] - dXmean;
-				double dDistYTmp = sourcePntLeft[1] - dYmean;
-				double dDistZTmp = sourcePntLeft[2] - dZmean;
-				double dDistTmp = sqrt( dDistXTmp * dDistXTmp + dDistYTmp * dDistYTmp + dDistZTmp * dDistZTmp );
-				if( pDistLeft[idx] > dDistTmp )
-				{
-					pDistLeft[idx] = dDistTmp;
-					pNewSourceLeft[idx].x = dXmean;
-					pNewSourceLeft[idx].y = dYmean;
-					pNewSourceLeft[idx].z = dZmean;
-				}
-
-				dDistXTmp = sourcePntRight[0] - dXmean;
-                                dDistYTmp = sourcePntRight[1] - dYmean;
-                                dDistZTmp = sourcePntRight[2] - dZmean;
-                                dDistTmp = sqrt( dDistXTmp * dDistXTmp + dDistYTmp * dDistYTmp + dDistZTmp * dDistZTmp );
-                                if( pDistRight[idx] > dDistTmp )
-                                {
-                                        pDistRight[idx] = dDistTmp;
-                                        pNewSourceRight[idx].x = dXmean;
-                                        pNewSourceRight[idx].y = dYmean;
-                                        pNewSourceRight[idx].z = dZmean;
-                                }*/
-
-				//pNewSource[idx].x = dXmean;
-				//pNewSource[idx].y = dYmean;
-				//pNewSource[idx].z = dZmean;
-				
-				// judge whether the shortest path goes throught current contour
-				/*double normalTmp[3];
-				normalTmp[0] = vecNorm[i].x; normalTmp[1] = vecNorm[i].y; normalTmp[2] = vecNorm[i].z;
-				if( i > 0 )
-				{
-				if( !locator->IntersectWithLine( sourcePntLeft, sourcePntProjLeft, tolerance, lineParameter, intersect, paraCoord, sub_id) && cutPolygon->PointInPolygon( sourcePntProjLeft, (int)(cutPolygon->GetPoints()->GetNumberOfPoints()), (double *)(cutPolygon->GetPoints()), cutPolygon->GetPoints()->GetBounds(), normalTmp ) )
-				{
-					bFlagLeft++;
-					pFlagShortestPath[idx] = 1;
-					sourcePntLeft[0] = sourcePntProjLeft[0];
-					sourcePntLeft[1] = sourcePntProjLeft[1];
-					sourcePntLeft[2] = sourcePntProjLeft[2];	
-				}
-				else 
-				{
-					double dClosestLeft[3];
-					dClosestLeft[0] = pNewSourceLeft[idx].x; dClosestLeft[1] = pNewSourceLeft[idx].y; dClosestLeft[2] = pNewSourceLeft[idx].z;
-					if( locator->IntersectWithLine( sourcePntLeft, dClosestLeft, tolerance, lineParameter, intersect, paraCoord, sub_id ) )
-					{
-						if( fabs( intersect[0] - dClosestLeft[0] ) < 0.001 && fabs( intersect[1] - dClosestLeft[1] ) < 0.001 && fabs( intersect[2] - dClosestLeft[2] ) < 0.001 )
-						{ 
-							bFlagLeft++;
-							pFlagShortestPath[idx] = 1;
-							sourcePntLeft[0] = dClosestLeft[0];
-							sourcePntLeft[1] = dClosestLeft[1];
-							sourcePntLeft[2] = dClosestLeft[2];
-						}
+						pXSectionalPerimeter[idx] += sqrt( (pContourPoints[tmp+nPosTmp].x - pContourPoints[nPosTmp].x) * (pContourPoints[tmp+nPosTmp].x - pContourPoints[nPosTmp].x) + (pContourPoints[tmp+nPosTmp].y - pContourPoints[nPosTmp].y) * (pContourPoints[tmp+nPosTmp].y - pContourPoints[nPosTmp].y) + (pContourPoints[tmp+nPosTmp].z - pContourPoints[nPosTmp].z) * (pContourPoints[tmp+nPosTmp].z - pContourPoints[nPosTmp].z) );
 					}
 					else
 					{
-						double dMeanLeft[3];
-						dMeanLeft[0] = dXmean; dMeanLeft[1] = dYmean; dMeanLeft[2] = dZmean;
-						if( !locator->IntersectWithLine( sourcePntLeft, dMeanLeft, tolerance, lineParameter, intersect, paraCoord, sub_id ) && cutPolygon->PointInPolygon( dMeanLeft, (int)(cutPolygon->GetPoints()->GetNumberOfPoints()), (double *)(cutPolygon->GetPoints()), cutPolygon->GetPoints()->GetBounds(), normalTmp ) )
-                                        	{
-                                                	bFlagLeft++;
-                                                	pFlagShortestPath[idx] = 1;
-                                                	sourcePntLeft[0] = dMeanLeft[0];
-                                                	sourcePntLeft[1] = dMeanLeft[1];
-                                                	sourcePntLeft[2] = dMeanLeft[2];
-                                       	 	}
+						pXSectionalPerimeter[idx] += sqrt( (pContourPoints[tmp+nPosTmp].x - pContourPoints[tmp+1+nPosTmp].x) * (pContourPoints[tmp+nPosTmp].x - pContourPoints[tmp+1+nPosTmp].x) + (pContourPoints[tmp+nPosTmp].y - pContourPoints[tmp+1+nPosTmp].y) * (pContourPoints[tmp+nPosTmp].y - pContourPoints[tmp+1+nPosTmp].y) + (pContourPoints[tmp+nPosTmp].z - pContourPoints[tmp+1+nPosTmp].z) * (pContourPoints[tmp+nPosTmp].z - pContourPoints[tmp+1+nPosTmp].z) );
 					}
 				}
-			 	if( !locator->IntersectWithLine( sourcePntRight, sourcePntProjRight, tolerance, lineParameter, intersect, paraCoord, sub_id) && cutPolygon->PointInPolygon( sourcePntProjRight, (int)(cutPolygon->GetPoints()->GetNumberOfPoints()), (double *)(cutPolygon->GetPoints()), cutPolygon->GetPoints()->GetBounds(), normalTmp ) )
-                                {
-                                        bFlagRight++;
-                                        pFlagShortestPath[idx] = 1;
-                                        sourcePntRight[0] = sourcePntProjRight[0];
-                                        sourcePntRight[1] = sourcePntProjRight[1];
-                                        sourcePntRight[2] = sourcePntProjRight[2];
-                                }
-                                else
-                                {
-                                        double dClosestRight[3];
-                                        dClosestRight[0] = pNewSourceRight[idx].x; dClosestRight[1] = pNewSourceRight[idx].y; dClosestRight[2] = pNewSourceRight[idx].z;
-                                        if( locator->IntersectWithLine( sourcePntRight, dClosestRight, tolerance, lineParameter, intersect, paraCoord, sub_id ) )
-                                        {
-						if( fabs( intersect[0] - dClosestRight[0] ) < 0.001 && fabs( intersect[1] - dClosestRight[1] ) < 0.001 && fabs( intersect[2] - dClosestRight[2] ) < 0.001 )
-                                                {
-							bFlagRight++;
-                                                	pFlagShortestPath[idx] = 1;
-                                                	sourcePntRight[0] = dClosestRight[0];
-                                                	sourcePntRight[1] = dClosestRight[1];
-                                                	sourcePntRight[2] = dClosestRight[2];
-						}
-                                        }
-                                        else
-                                        {
-                                                double dMeanRight[3];
-                                                dMeanRight[0] = dXmean; dMeanRight[1] = dYmean; dMeanRight[2] = dZmean;
-                                                if( !locator->IntersectWithLine( sourcePntRight, dMeanRight, tolerance, lineParameter, intersect, paraCoord, sub_id ) && cutPolygon->PointInPolygon( dMeanRight, (int)(cutPolygon->GetPoints()->GetNumberOfPoints()), (double *)(cutPolygon->GetPoints()), cutPolygon->GetPoints()->GetBounds(), normalTmp ) )
-                                                {
-                                                        bFlagRight++;
-                                                        pFlagShortestPath[idx] = 1;
-                                                        sourcePntRight[0] = dMeanRight[0];
-                                                        sourcePntRight[1] = dMeanRight[1];
-                                                        sourcePntRight[2] = dMeanRight[2];
-                                                }
-                                        }
-                                }
-				}*/
-
-
-				/*else if( i == 0 ||  cutPolygon->PointInPolygon( sourcePntProjRight, (int)(cutPolygon->GetPoints()->GetNumberOfPoints()), (double *)(cutPolygon->GetPoints()), cutPolygon->GetPoints()->GetBounds(), normalTmp ) )
-				{
-					bFlagRight++;
-					pFlagShortestPath[idx] = 1;
-					sourcePntRight[0] = sourcePntProjRight[0];
-					sourcePntRight[1] = sourcePntProjRight[1];
-					sourcePntRight[2] = sourcePntProjRight[2];
-				}
-				else pFlagShortestPath[idx] = 0;*/
 				pXSectionalArea[idx] = cutPolygon->ComputeArea();
-				std::cout << "area " << idx << pXSectionalArea[idx] << std::endl;
- 				//dCrossSectionalArea += cutPolygon->ComputeArea();
-				//if( i == 0 && idx == 0 ) { sourcePntLeft[0] = dXmean; sourcePntLeft[1] = dYmean; sourcePntLeft[2] = dZmean; }
-				//else if( i == 0 && idx == 1 ) { sourcePntRight[0] = dXmean; sourcePntRight[1] = dYmean; sourcePntRight[2] = dZmean; }
-				/*if( i == 0 )
-				{
-					if( bFlagLeft == 0 ) { sourcePntLeft[0] = dXmean; sourcePntLeft[1] = dYmean; sourcePntLeft[2] = dZmean; bFlagLeft = 1; }
-					else if( bFlagRight == 0 )  { sourcePntRight[0] = dXmean; sourcePntRight[1] = dYmean; sourcePntRight[2] = dZmean; bFlagRight = 1; } 
-				}*/
-				pFlagShortestPath[idx] = 1;
-				//cutPolygon->Delete();
-			}
-		}
-		
-		double dMaxAreaTmp = 0;
-		int nMaxAreaIdTmp = -1;
-		double dSecAreaTmp = 0;
-		int nSecAreaIdTmp = -1;
-		for( int idx = 0; idx < nbContours; idx++ )
-		{
-			if( pXSectionalArea[idx] > dMaxAreaTmp ) 
-			{
-				nSecAreaIdTmp = nMaxAreaIdTmp;
-				dSecAreaTmp = dMaxAreaTmp;
-				nMaxAreaIdTmp = idx;
-				dMaxAreaTmp = pXSectionalArea[idx];
-			}
-			else if( pXSectionalArea[idx] > dSecAreaTmp )
-			{
-				nSecAreaIdTmp = idx;
-				dSecAreaTmp = pXSectionalArea[idx];
-			}
-			if( pXSectionalArea[idx] > 100 ) pFlagShortestPath[idx] = 1;
-		}	
-		pFlagShortestPath[nMaxAreaIdTmp] = 1;
-		if( dSecAreaTmp / dMaxAreaTmp >= 0.2 )	
-		{
-			pFlagShortestPath[nSecAreaIdTmp] = 1;
-			for( int idx = 0; idx < nbContours; idx++ )
-			{
-				if( idx == nMaxAreaIdTmp || idx == nSecAreaIdTmp ) continue;
-				if( pXSectionalArea[idx] / ( dSecAreaTmp + 1e-10 ) >= 0.5 ) pFlagShortestPath[idx] = 1;
-			}
-		}
-	
-                /*for( int idx = 0; idx < nbContours; idx++ )
-                {
-                        std::cout << "( " << pXSectionalArea[idx] << ", " << pFlagShortestPath[idx] << " ), ";
-                }
-                std::cout << std::endl;
-
-		if( bFlagLeft == 0 )
-		{
-			double dMinDistTmp = 1000000;
-			int nMinDistIdTmp = -1;
-			for( int idx = 0; idx < nbContours; idx++ )
-			{
-				if( pFlagShortestPath[idx] == 1 || pXSectionalArea[idx] <= 10 ) continue;
-				//if( pXSectionalArea[idx] == 0 ) continue;
-				if( dMinDistTmp > pDistLeft[idx] )
-				{
-					dMinDistTmp = pDistLeft[idx];
-					nMinDistIdTmp = idx;
-				}
-			}
-			if( nMinDistIdTmp >= 0 )
-			{
-				pFlagShortestPath[nMinDistIdTmp] = 1;
-				sourcePntLeft[0] = pNewSourceLeft[nMinDistIdTmp].x;
-				sourcePntLeft[1] = pNewSourceLeft[nMinDistIdTmp].y;
-				sourcePntLeft[2] = pNewSourceLeft[nMinDistIdTmp].z;
-			//	bFlagLeft = 1;
-			}
+				pFlagShortestPath[idx] = true;
+            }
 		}
 
-		if( bFlagRight == 0 )
-		{
-			double dMinDistTmp = 1000000;
-			int nMinDistIdTmp = -1;
-			for( int idx = 0; idx < nbContours; idx++ )
-			{
-				if( pFlagShortestPath[idx] == 1 || pXSectionalArea[idx] <= 10 ) continue;
-				//if( pXSectionalArea[idx] == 0 ) continue;
-				if( dMinDistTmp > pDistRight[idx] )
-				{
-					dMinDistTmp = pDistRight[idx];
-					nMinDistIdTmp = idx;
-				}
-			}
-			if( nMinDistIdTmp >= 0 )
-			{
-				pFlagShortestPath[nMinDistIdTmp] = 1;
-				sourcePntRight[0] = pNewSourceRight[nMinDistIdTmp].x;
-				sourcePntRight[1] = pNewSourceRight[nMinDistIdTmp].y;
-				sourcePntRight[2] = pNewSourceRight[nMinDistIdTmp].z;
-		//		bFlagRight = 1;
-			}
-		}
-
-		for( int idx = 0; idx < nbContours; idx++ )
-		{
-			std::cout << "( " << pXSectionalArea[idx] << ", " << pFlagShortestPath[idx] << " ), ";
-		}
-		std::cout << std::endl;*/
-		
+        // some contours are inside of others, the cross-sectional area is their substraction not the sum
+        std::cout << "Find the maximal two contours..." << std::endl;
 		double firstMaxArea = 0; 
 		double secondMaxArea = 0;
 		int idFirstMaxArea = -1;
@@ -743,58 +442,27 @@ int main(int argc, char **argv)
 				idFirstMaxArea = idx;
 			}
 			else if( pXSectionalArea[idx] * pFlagShortestPath[idx] > secondMaxArea )
-                        {
-                                secondMaxArea = pXSectionalArea[idx] * pFlagShortestPath[idx];
-                                idSecondMaxArea = idx;
-                        }		
+            {
+                secondMaxArea = pXSectionalArea[idx] * pFlagShortestPath[idx];
+                idSecondMaxArea = idx;
+            }
 		}
 			
-		std::cout << "the first id: " << idFirstMaxArea << ", the second id: " << idSecondMaxArea << std::endl;
-
-		/*if( idFirstMaxArea < 0 )
-		{
-			firstMaxArea = 0;
-			for( int idx = 0; idx < nbContours; idx++ )
-			{
-				if( pXSectionalArea[idx] > firstMaxArea )
-				{
-					firstMaxArea = pXSectionalArea[idx];
-					idFirstMaxArea = idx;
-				}
-			}
-			pFlagShortestPath[idFirstMaxArea] = 1;
-		}
-		if( idSecondMaxArea < 0 && nbContours >= 2 )
-		{
-			secondMaxArea = 0;
-			for( int idx = 0; idx < nbContours; idx++ )
-			{
-				if( idx == idFirstMaxArea ) continue;
-				if( pXSectionalArea[idx] > secondMaxArea )
-				{
-					secondMaxArea = pXSectionalArea[idx];
-					idSecondMaxArea = idx;
-				}
-			}
-			pFlagShortestPath[idSecondMaxArea] = 1;
-		}
-
-		 std::cout << "the first id: " << idFirstMaxArea << ", the second id: " << idSecondMaxArea << std::endl; */
-		
+		std::cout << "the first id: " << idFirstMaxArea << ", the second id: " << idSecondMaxArea << std::endl;	
 		if( idFirstMaxArea >= 0 )
 		{
-			std::cout << "id first ...." << std::endl;
+			//std::cout << "id first ...." << std::endl;
 			int nPosTmp, nPntNumberTmp;
-                        if( idFirstMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idFirstMaxArea] + 1; }
-                        else { nPosTmp = pPosPoints[idFirstMaxArea-1]+1; nPntNumberTmp = pPosPoints[idFirstMaxArea] - pPosPoints[idFirstMaxArea-1]; }
+            if( idFirstMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idFirstMaxArea] + 1; }
+            else { nPosTmp = pPosPoints[idFirstMaxArea-1]+1; nPntNumberTmp = pPosPoints[idFirstMaxArea] - pPosPoints[idFirstMaxArea-1]; }
 			VTK_CREATE( vtkPolygon, polygonTmp );
-                        polygonTmp->GetPointIds()->SetNumberOfIds( nPntNumberTmp );
-                        polygonTmp->GetPoints()->SetNumberOfPoints( nPntNumberTmp );
+            polygonTmp->GetPointIds()->SetNumberOfIds( nPntNumberTmp );
+            polygonTmp->GetPoints()->SetNumberOfPoints( nPntNumberTmp );
 			for( int tmp = 0; tmp < nPntNumberTmp; tmp++ )
-                        {
-                        	polygonTmp->GetPointIds()->SetId( tmp, tmp );
-                               	polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
-                        }
+            {
+                polygonTmp->GetPointIds()->SetId( tmp, tmp );
+                polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
+            }
 			for( int idx = 0; idx < nbContours; idx++ )
 			{
 				if( idx == idFirstMaxArea ) continue;
@@ -802,15 +470,6 @@ int main(int argc, char **argv)
 				    pMinBoundary[idx].z >= pMinBoundary[idFirstMaxArea].z && pMaxBoundary[idx].x <= pMaxBoundary[idFirstMaxArea].x && 
 				    pMaxBoundary[idx].y <= pMaxBoundary[idFirstMaxArea].y && pMaxBoundary[idx].z <= pMaxBoundary[idFirstMaxArea].z )
 				{
-				    	/*int nPosTmp, nPntNumberTmp;
-				    	if( idFirstMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idFirstMaxArea] + 1; }
-				    	else { nPosTmp = pPosPoints[idFirstMaxArea-1]+1; nPntNumberTmp = pPosPoints[idFirstMaxArea] - pPosPoints[idFirstMaxArea-1]; }
-				    	VTK_CREATE( vtkPolygon, polygonTmp );
-					for( int tmp = 0; tmp < nPntNumberTmp; tmp++ )
-				    	{
-						polygonTmp->GetPointIds()->SetId( tmp, tmp );
-                                        	polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
-                                    	}*/
 					double pntTmpTest[3];
 					pntTmpTest[0] = pContourPoints[ pPosPoints[idx] ].x;
 					pntTmpTest[1] = pContourPoints[ pPosPoints[idx] ].y;
@@ -821,7 +480,7 @@ int main(int argc, char **argv)
 					normTmp[2] = vecNorm[i].z;
 					if( polygonTmp->PointInPolygon( pntTmpTest, (int)(polygonTmp->GetPoints()->GetNumberOfPoints()), (double *)(polygonTmp->GetPoints()), polygonTmp->GetPoints()->GetBounds(), normTmp ) )
 					{
-						pFlagShortestPath[idx] = 1;
+						pFlagShortestPath[idx] = true;
 						pXSectionalArea[idx] *= (-1);		
 					}
 				}
@@ -830,21 +489,18 @@ int main(int argc, char **argv)
 			
 		if( idSecondMaxArea >= 0 )
 		{
-			std::cout << "id second ...." << std::endl;
+			//std::cout << "id second ...." << std::endl;
 			int nPosTmp, nPntNumberTmp;
-                       	if( idSecondMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idSecondMaxArea] + 1; }
-                        else { nPosTmp = pPosPoints[idSecondMaxArea-1]+1; nPntNumberTmp = pPosPoints[idSecondMaxArea] - pPosPoints[idSecondMaxArea-1]; }
-			std::cout << pPosPoints[1] << " " <<  pPosPoints[2] << std::endl;
+            if( idSecondMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idSecondMaxArea] + 1; }
+            else { nPosTmp = pPosPoints[idSecondMaxArea-1]+1; nPntNumberTmp = pPosPoints[idSecondMaxArea] - pPosPoints[idSecondMaxArea-1]; }
 			VTK_CREATE( vtkPolygon, polygonTmp );
-                        polygonTmp->GetPointIds()->SetNumberOfIds( nPntNumberTmp );
-                        polygonTmp->GetPoints()->SetNumberOfPoints( nPntNumberTmp );
+            polygonTmp->GetPointIds()->SetNumberOfIds( nPntNumberTmp );
+            polygonTmp->GetPoints()->SetNumberOfPoints( nPntNumberTmp );
 			for( int tmp = 0; tmp < nPntNumberTmp; tmp++ )
-                        {
-                        	polygonTmp->GetPointIds()->SetId( tmp, tmp );
-                                polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
-                        }
-
-			std::cout << "id second: " << idSecondMaxArea << " " << nPosTmp << " " << nPntNumberTmp << std::endl;
+            {
+                polygonTmp->GetPointIds()->SetId( tmp, tmp );
+                polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
+            }
 
 			for( int idx = 0; idx < nbContours; idx++ )
 			{
@@ -853,27 +509,17 @@ int main(int argc, char **argv)
 				    pMinBoundary[idx].z >= pMinBoundary[idSecondMaxArea].z && pMaxBoundary[idx].x <= pMaxBoundary[idSecondMaxArea].x &&
 				    pMaxBoundary[idx].y <= pMaxBoundary[idSecondMaxArea].y && pMaxBoundary[idx].z <= pMaxBoundary[idSecondMaxArea].z )
 				{
-					/*int nPosTmp, nPntNumberTmp;
-                                        if( idSecondMaxArea == 0 ) { nPosTmp = 0; nPntNumberTmp = pPosPoints[idSecondMaxArea] + 1; }
-                                        else { nPosTmp = pPosPoints[idSecondMaxArea-1]+1; nPntNumberTmp = pPosPoints[idSecondMaxArea] - pPosPoints[idSecondMaxArea-1]; }
-                                        VTK_CREATE( vtkPolygon, polygonTmp );
-                                        for( int tmp = 0; tmp < nPntNumberTmp; tmp++ )
-                                        {
-                                                polygonTmp->GetPointIds()->SetId( tmp, tmp );
-                                                polygonTmp->GetPoints()->SetPoint( tmp, pContourPoints[tmp+nPosTmp].x, pContourPoints[tmp+nPosTmp].y, pContourPoints[tmp+nPosTmp].z );
-                                        }*/
-
-                                        double pntTmpTest[3];
-                                        pntTmpTest[0] = pContourPoints[ pPosPoints[idx] ].x;
-                                        pntTmpTest[1] = pContourPoints[ pPosPoints[idx] ].y;
-                                        pntTmpTest[2] = pContourPoints[ pPosPoints[idx] ].z;
-                                        double normTmp[3];
-                                        normTmp[0] = vecNorm[i].x;
-                                        normTmp[1] = vecNorm[i].y;
-                                        normTmp[2] = vecNorm[i].z;
-                                        if( polygonTmp->PointInPolygon( pntTmpTest, (int)(polygonTmp->GetPoints()->GetNumberOfPoints()), (double *)(polygonTmp->GetPoints()), polygonTmp->GetPoints()->GetBounds(), normTmp ) )
-                                        {
-						pFlagShortestPath[idx] = 1;
+                    double pntTmpTest[3];
+                    pntTmpTest[0] = pContourPoints[ pPosPoints[idx] ].x;
+                    pntTmpTest[1] = pContourPoints[ pPosPoints[idx] ].y;
+                    pntTmpTest[2] = pContourPoints[ pPosPoints[idx] ].z;
+                    double normTmp[3];
+                    normTmp[0] = vecNorm[i].x;
+                    normTmp[1] = vecNorm[i].y;
+                    normTmp[2] = vecNorm[i].z;
+                    if( polygonTmp->PointInPolygon( pntTmpTest, (int)(polygonTmp->GetPoints()->GetNumberOfPoints()), (double *)(polygonTmp->GetPoints()), polygonTmp->GetPoints()->GetBounds(), normTmp ) )
+                    {
+						pFlagShortestPath[idx] = true;
 						pXSectionalArea[idx] *= (-1);
 					}
 				}
@@ -884,16 +530,20 @@ int main(int argc, char **argv)
 		{
 			for( int idx = 0; idx < nbContours; idx++ )
 			{
-				pFlagShortestPath[idx] = 1;
+				pFlagShortestPath[idx] = true;
 			}
-		}
-		
-		dCrossSectionalArea = 0;
+        }
+	
+		// write the processed contours into the file	
+		std::cout << "Writing the points on contours..." << std::endl;
+		double dCrossSectionalArea = 0;
+		double dCrossSectionalPerimeter = 0;
 		for( int idx = 0; idx < nbContours; idx++ )
 		{
 			if( pXSectionalArea[idx] != 0 && pFlagShortestPath[idx] == 1 )
 			{
 				dCrossSectionalArea += pXSectionalArea[idx];
+				dCrossSectionalPerimeter += pXSectionalPerimeter[idx];
 				if( idx == 0 )
 				{
 					fprintf( pFileTmp, "%d\n", pPosPoints[idx] + 1 );
@@ -911,28 +561,31 @@ int main(int argc, char **argv)
 					}
 				}
 			}
-		}
+        }
 
-                fprintf( pFileArea, "%lf\n", dCrossSectionalArea);
+        fprintf( pFileArea, "%lf\n", dCrossSectionalArea );  
+		fprintf( pFilePerimeter, "%lf\n", dCrossSectionalPerimeter );
 		fclose( pFileTmp );
-		fclose( pFileOriginal );
-		printf("point %d finished\n", i+1);
-
+        fclose( pFileOriginal );
+		
+		std::cout << "Point " << i+1 << " finished." << std::endl;
+		std::cout << std::endl;
+		
+		// release the allocated memory
 		if( pContourIdPoints ) { delete [] pContourIdPoints; pContourIdPoints = NULL; }
-                if( pContourLines ) { delete [] pContourLines; pContourLines = NULL; }
-                if( pContourPoints ) { std::cout << "delete array" << std::endl; delete [] pContourPoints; pContourPoints = NULL; std::cout << "successful" << std::endl; }
+        	if( pContourLines ) { delete [] pContourLines; pContourLines = NULL; }
+            //if( pContourPoints ) { delete [] pContourPoints; pContourPoints = NULL; }
+            pContourPoints.resize(0);
 		if( pContourPointsFlag ) { delete [] pContourPointsFlag; pContourPointsFlag = NULL; }
 		if( pXSectionalArea ) { delete [] pXSectionalArea; pXSectionalArea = NULL; }
+		if( pXSectionalPerimeter ) { delete [] pXSectionalPerimeter; pXSectionalPerimeter = NULL; }
 		if( pFlagShortestPath ) { delete [] pFlagShortestPath; pFlagShortestPath = NULL; }
 		if( pMinBoundary ) { delete [] pMinBoundary; pMinBoundary = NULL; }
 		if( pMaxBoundary ) { delete [] pMaxBoundary; pMaxBoundary = NULL; }
-		//if( pDistLeft ) { delete [] pDistLeft; pDistLeft = NULL; }
-		//if( pDistRight ) { delete [] pDistRight; pDistRight = NULL; }
-		//if( pNewSourceLeft ) { delete [] pNewSourceLeft; pNewSourceLeft = NULL; }
-		//if( pNewSourceRight ) { delete [] pNewSourceRight; pNewSourceRight = NULL; }
 		if( pPosPoints ) { delete [] pPosPoints; pPosPoints = NULL; }
 	}
 	fclose( pFileArea );	
+	fclose( pFilePerimeter );
 	return 0;
 }
 
