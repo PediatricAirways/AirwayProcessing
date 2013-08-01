@@ -129,7 +129,7 @@ landmarks
 nosePlane
 
 % try to calculate the start/end planes 
-[coeff] = princomp( landmarks );
+[coeff] = compPrincipalDirection( landmarks );
 
 % take the axis with the largest eigenvalue as the normal of the
 % cutting plane for the branches, and the second for the noses
@@ -139,11 +139,11 @@ nosePlane
 %axisIdNose
 if abs( value_1 - 0.7 ) < 0.5
     if idNoseRecord == 1
-	[coeff_1] = princomp( landmarks( 2:end, : ) );
+        [coeff_1] = compPrincipalDirection( landmarks( 2:end, : ) );
     elseif idNoseRecord == size( key, 1 )
- 	[coeff_1] = princomp( landmarks( 1:end-1, : ) );
+        [coeff_1] = compPrincipalDirection( landmarks( 1:end-1, : ) );
     else
-	[coeff_1] = princomp( [ landmarks( 1:idNoseRecord-1, :); landmarks( idNoseRecord+1:end, : ) ] );
+        [coeff_1] = compPrincipalDirection( [ landmarks( 1:idNoseRecord-1, :); landmarks( idNoseRecord+1:end, : ) ] );
     end 
     [value_1, axisIdBranch] = max( abs( coeff_1( :, 1 ) ) );
     coeff( axisIdBranch, 2 ) = 0;
@@ -185,10 +185,10 @@ vLow = ijkNose( axisIdNose );
 bHigh = sign( ijkBranch( axisIdBranch ) - ijkNose( axisIdBranch ) ) * axisIdBranch;
 vHigh = ijkBranch( axisIdBranch );
 
-%bLow 
-%vLow
-%bHigh
-%vHigh
+bLow 
+vLow
+bHigh
+vHigh
 
 % clip the airway's mouth
 %clipFile
