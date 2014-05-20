@@ -90,16 +90,16 @@ end
 
 % read area of ellipse
 for n = 1:numf
-    fid = fopen(ellipseAreaFile, 'r');
+    fid = fopen(ellipseAreaFile, 'r')
     if fid == -1
-	continue;
+        continue;
     end
-    tline = fgets(fid);
-    nNumArea = sscanf(tline, '%d');
+    tline = fgets(fid) %fid = 4, return 100
+    nNumArea = sscanf(tline, '%d') % return 100
     for i = 1:nNumArea
-        tline = fgets(fid);
-        if(tline == -1) break; end
-        areaEllipse(i,n) = sscanf(tline, '%f');
+        tline = fgets(fid) %fid = 4, return -1
+        if(tline == -1) break; end %break
+        areaEllipse(i,n) = sscanf(tline, '%f'); %never defined
     end
     fclose(fid);
 end
@@ -109,7 +109,7 @@ for n = 1:numf
     fid = fopen(perimeterFile, 'r');
     tline = fgets(fid);
     nNumPerimeter = sscanf(tline, '%d');
-    for i = 1:nNumPerimeter
+    for i = 1:nNumPerimeter 
         tline = fgets(fid);
         if(tline == -1) break; end
         perimeter(i,n) = sscanf(tline, '%f');
@@ -141,12 +141,12 @@ for n = 1:numf
     end
     areafd = smooth_basis( xValue, yValue, areafdPar );
     
-    clear yValue
-    yValue = areaEllipse(1:numP(n), n);
-    for iTmp = 1:100
-        yValue = [ yValue(1); yValue; yValue(end) ];
-    end 
-    areaEllipsefd = smooth_basis( xValue, yValue, areafdPar );
+%     clear yValue
+%     yValue = areaEllipse(1:numP(n), n);
+%     for iTmp = 1:100
+%         yValue = [ yValue(1); yValue; yValue(end) ];
+%     end 
+%     areaEllipsefd = smooth_basis( xValue, yValue, areafdPar );
 	
 	clear yValue
 	yValue = perimeter(1:numP(n), n);
@@ -163,7 +163,7 @@ for n = 1:numf
 	hydraulicDiameterfd = smooth_basis(xValue, yValue, areafdPar );
     
     areafine(:,n) = eval_fd(agefine, areafd);
-    areaEllipsefine(:,n) = eval_fd(agefine, areaEllipsefd);
+%     areaEllipsefine(:,n) = eval_fd(agefine, areaEllipsefd);
 	perimeterfine(:,n) = eval_fd(agefine, perimeterfd);
 	hydraulicDiameter(:,n) = eval_fd(agefine, hydraulicDiameterfd);
 end
@@ -177,13 +177,13 @@ Lfdobj   = int2Lfd(2);
 lambda   = 0.5*1e-6;
 fdPar_new = fdPar(basis_new, Lfdobj, lambda);
 areafd_new = smooth_basis(knots_new, areafine, fdPar_new);
-areaEllipsefd_new = smooth_basis(knots_new, areaEllipsefine, fdPar_new);
+% areaEllipsefd_new = smooth_basis(knots_new, areaEllipsefine, fdPar_new);
 perimeterfd_new = smooth_basis(knots_new, perimeterfine, fdPar_new);
 hydraulicDiameterfd_new = smooth_basis(knots_new, hydraulicDiameter, fdPar_new);
 
 for icase = 1:numf
     valueLM(icase, :) = eval_fd( Landmarks(icase, :), areafd_new(icase));
-    valueLM_ellipse(icase, :) = eval_fd( Landmarks(icase, :), areaEllipsefd_new(icase) );
+%     valueLM_ellipse(icase, :) = eval_fd( Landmarks(icase, :), areaEllipsefd_new(icase) );
 	valueLM_perimeter(icase, :) = eval_fd( Landmarks(icase, :), perimeterfd_new(icase) );
 	valueLM_hydraulicDiameter(icase, :) = eval_fd( Landmarks(icase, :), hydraulicDiameterfd_new(icase) );
 end
@@ -237,17 +237,17 @@ filename = sprintf( '%s/curveOfHydraulicDiameter.png', outputPrefix );
 saveas( gca, filename );
 
 % draw curve of ellipse area
-areaEllipsefine_new = eval_fd(agefine, areaEllipsefd_new);
-figure, h = plot(agefine, areaEllipsefine_new, 'LineWidth', 2);
+% areaEllipsefine_new = eval_fd(agefine, areaEllipsefd_new);
+% figure, h = plot(agefine, areaEllipsefine_new, 'LineWidth', 2);
 hold on
 % plot(agefine, mean(areafine_new, 2), 'm--', 'LineWidth', 3);
-for icase = 1:numf
-    plot(Landmarks(icase, :), valueLM_ellipse(icase, :), char(style(icase)), 'LineWidth', 10);
-    plot( dist(1:numP(icase), icase), areaEllipse(1:numP(icase), icase), '.' );
-end
-hold off
-xlabel( 'Position' );
-ylabel( 'Area' );
-ylim( [0 1000] );
-filename = sprintf( '%s/areaCurveWithLandmarksEllipse.png', outputPrefix );
-saveas( h, filename );
+% for icase = 1:numf
+%     plot(Landmarks(icase, :), valueLM_ellipse(icase, :), char(style(icase)), 'LineWidth', 10);
+%     plot( dist(1:numP(icase), icase), areaEllipse(1:numP(icase), icase), '.' );
+% end
+% hold off
+% xlabel( 'Position' );
+% ylabel( 'Area' );
+% ylim( [0 1000] );
+% filename = sprintf( '%s/areaCurveWithLandmarksEllipse.png', outputPrefix );
+% saveas( h, filename );

@@ -80,6 +80,7 @@ nosePlane = zeros( 4, 3 );
 for iI = 1:length(key)
     landmarksTmp = str2num( val{iI} );
     landmarksIdTmp = 0;
+    disp( strcat('"', key{iI}, '"' ));
     if strcmp( key{iI}, 'NasalSpine' )
 	landmarksIdTmp = 1;
 	pntNose = landmarksTmp';
@@ -168,6 +169,8 @@ end
 im_slice = im_slice ./ max( max( im_slice ) );
 figure(1), h = imagesc( (im_slice), [0 1] );
 filename = sprintf('%s/%s_slice.png', outputIsosurfacePrefix, subjectName);
+h
+filename
 saveas(h, filename);
 
 ijkNose = round( inv( space_direction ) * ( pntNose - space_origin ) );
@@ -176,6 +179,9 @@ ijkNose = max( ijkNose, [1; 1; 1] );
 ijkNose = min( ijkNose, sizes );
 ijkBranch = max( ijkBranch, [1; 1; 1] );
 ijkBranch = min( ijkBranch, sizes );
+
+ijkNose
+ijkBranch
 
 tmp = ijkNose(1); ijkNose(1) = ijkNose(2); ijkNose(2) = tmp;
 tmp = ijkBranch(1); ijkBranch(1) = ijkBranch(2); ijkBranch(2) = tmp;
@@ -194,6 +200,8 @@ vHigh
 %clipFile
 [key, val] = textread( clipFile, '%s:%[^\n]' );
 nNumSphere = 0;
+mouthCenter = [];
+mouthRadius = [];
 for iI = 1:length(key)
     if strcmp( key{iI}, 'ClipSphereCenter' )
 	nNumSphere = nNumSphere + 1;
@@ -202,8 +210,6 @@ for iI = 1:length(key)
         mouthRadius( nNumSphere ) = str2num( val{iI} );
     end
 end
-mouthCenter
-mouthRadius
 
 % the airway's starting plane
 %startPlaneFile
@@ -385,12 +391,12 @@ dz = spacing(3);
 
 solIm = solveLaplaceLinearSystem( imLabel, dx, dy, dz );
 
-%{
+
 filename = sprintf( '%s/testLabel.mhd', outputIsosurfacePrefix );
 writeMETA( imLabel, filename, 'MET_FLOAT', [0, 0, 0], spacing );
 filename = sprintf( '%s/testSolIm.mhd', outputIsosurfacePrefix );
 writeMETA( solIm, filename, 'MET_FLOAT', [0, 0, 0], spacing );
-%}
+
 
 binVals = linspace( 0, 1, 8*nSurface );
 N = hist( solIm(:), binVals );
@@ -627,12 +633,19 @@ meanIsovals = zeros( length( isovals ), 1 );
 
 cmap = jet(length(isovals)+1);
 
+handle_surface = figure(2);
+handle_contour = figure(3);
+
+
 for iI=1:length( isovals )
 
   fprintf('Rendering patch %d/%d\n', iI, length( isovals ) );
   
   handle_surface = figure(2); [f, v] = isosurface( x, y, z, solIm, isovals( iI ) );
   hold on
+  if sum(size(v)) == 0
+    continue
+  end
   tmp = v(:,1); v(:,1) = v(:,2); v(:,2) = tmp;
   figure(2), p = patch( 'Faces', f, 'Vertices', v );
   %set(p, 'FaceColor', 'blue', 'EdgeColor', 'none');  
@@ -975,9 +988,3 @@ hold off
 hold off
 hold off
 
-% output the solIm
-%fileNameSolIm = sprintf( '%s/solIm.mhd', outputIsosurfacePrefix );
-%origin = [  boundbox(1), boundbox(2), boundbox(3) ];
-%spacing = [ abs(dx), abs(dy), abs(dz) ];
-%transform = [ sign(dx) 0 0 0 sign(dy) 0 0 0 sign(dz) ];
-%writeMETA( solIm, fileNameSolIm, 'MET_FLOAT', origin, spacing, transform );
