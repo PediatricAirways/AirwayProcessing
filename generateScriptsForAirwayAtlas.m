@@ -35,7 +35,8 @@ cases = {'CRL02', 'CRL04', 'CRL06', 'CRL16', 'CRL21', 'CRL23', 'CRL27', 'CRL31',
 		 'CRL105', 'CRL107', 'CRL108', 'CRL109', 'CRL111', 'CRL113', 'CRL114', 'CRL115', 'CRL116', 'CRL117', 'CRL118', 'CRL119', 'CRL120', 'CRL121', 'CRL122', 'CRL123', 'CRL124', 'CRL127', ...
 		 'SGS03ManPre', 'SGS07', 'SGS11', 'SGS12', 'SGS13', 'SGS18', 'SGS03ManPost', 'SGS05', 'SGS06', 'SGS08', 'SGS09', 'SGS10', 'SGS14', 'SGS17', 'SGS07_V3', 'SGS04_V3', 'SGS01_V3'};
 %}
-cases = {'CRL32'};
+%cases = {'2024'};
+cases = { '1002', '1003', '1004', '1005' }
 
 fid = fopen( scriptsFile, 'wt' );
 for iI = 1:max(size( cases))
@@ -45,14 +46,14 @@ for iI = 1:max(size( cases))
     fprintf( fid, 'rm -r ./%s/IsoSurface%s\n', resultsDirName, cases{iI} );
     fprintf( fid, 'mkdir ./%s/IsoSurface%s\n', resultsDirName, cases{iI} );
     fprintf( fid, 'matlab -nodesktop -nosplash -nodisplay -r "cd ./code/centerline; generateCenterlineOfAirway(' );
-    fprintf( fid, '''%s'', ''../../%s/%s_Segmented_NoSinuses.nrrd'', ''../../%s/IsoSurface%s'', %d, ''../../%s/%s_Points.txt'', ''../../%s/%s_CuttingPlanes.txt'' ); ', ...
+    fprintf( fid, '''%s'', ''../../%s/%s_OUTPUT.nrrd'', ''../../%s/IsoSurface%s'', %d, ''../../%s/%s_LANDMARKS.txt'', ''../../%s/%s_CLIPPINGS.txt'' ); ', ...
                    cases{iI}, dataFoldName, cases{iI}, resultsDirName, cases{iI}, sampleNum, dataFoldName, cases{iI}, dataFoldName, cases{iI});
     fprintf( fid, 'cd ../..; quit;"\n\n' );
     
     % scripts for computing the cross-sectional area based on above centerline
     fprintf( fid, 'rm -r ./%s/Contour%s\n', resultsDirName, cases{iI} );
     fprintf( fid, 'mkdir ./%s/Contour%s\n', resultsDirName, cases{iI} );
-    fprintf( fid, './code/crossSections/bin/computeAreaAndContourWithMeanNorm ./%s/%s_Airway_NoSinuses_NoMouth_Smooth.vtk ./%s/IsoSurface%s/%s_MeanAndNormal.txt ./%s/%s_CuttingPlanes.txt ', ...
+    fprintf( fid, './code/crossSections/bin/computeAreaAndContourWithMeanNorm ./%s/%s_OUTPUT.vtk ./%s/IsoSurface%s/%s_MeanAndNormal.txt ./%s/%s_CuttingPlanes.txt ', ...
                    dataFoldName, cases{iI}, resultsDirName, cases{iI}, cases{iI}, dataFoldName, cases{iI} );
     fprintf( fid, './%s/Contour%s/%s_Area.txt ./%s/Contour%s/%s_Perimeter.txt ./%s/Contour%s/contour\n\n', resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI} );
   
@@ -65,7 +66,7 @@ for iI = 1:max(size( cases))
     fprintf( fid, 'matlab -nodesktop -nosplash -nodisplay -r "cd ./code/display; drawContourOfAirway(' );
     fprintf( fid, '''../../%s/IsoSurface%s/%s_MeanAndNormal.txt'', ''../../%s/IsoSurface%s/%s_NormReliableCheck.txt'', ', ...
                    resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI});
-    fprintf( fid, '''../../%s/Contour%s/contour'', ''../../%s/Curves%s/contour%s'', ''../../%s/Curves%s/%s_AreaEllipse.txt'', ''../../%s/%s_Points.txt''); ', ...
+    fprintf( fid, '''../../%s/Contour%s/contour'', ''../../%s/Curves%s/contour%s'', ''../../%s/Curves%s/%s_AreaEllipse.txt'', ''../../%s/%s_LANDMARKS.txt''); ', ...
                    resultsDirName, cases{iI}, resultsDirName, cases{iI}, cases{iI}, resultsDirName, cases{iI}, cases{iI}, dataFoldName, cases{iI} );
     fprintf( fid, 'cd ../..; quit;"\n\n' );
     
